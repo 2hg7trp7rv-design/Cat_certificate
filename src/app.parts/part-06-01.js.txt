@@ -1,0 +1,20 @@
+    this.save()
+    this.softChime(this.state.soundEnabled)
+    this.haptic('light')
+    this.render()
+    this.showToast(result.message)
+  }
+
+  setTemporaryActivity(activity, duration) {
+    if (this.activityTimer) clearTimeout(this.activityTimer)
+    this.activity = activity
+    this.render()
+    this.activityTimer = window.setTimeout(() => {
+      this.activity = 'idle'
+      this.render()
+    }, duration)
+  }
+
+  showToast(message, accent = '') {
+    document.querySelector('.game-toast')?.remove()
+    const toast = document.createElement('div')

@@ -1,0 +1,74 @@
+    toast.className = 'game-toast toast-enter'
+    toast.setAttribute('role', 'status')
+    toast.innerHTML = `<span>${escapeHTML(message)}</span>${accent ? `<strong>${escapeHTML(accent)}</strong>` : ''}`
+    document.body.appendChild(toast)
+    this.announce(`${message}${accent ? `、${accent}` : ''}`)
+    if (this.toastTimer) clearTimeout(this.toastTimer)
+    this.toastTimer = window.setTimeout(() => toast.remove(), 2700)
+  }
+
+  haptic(type) {
+    try {
+      const nativeHaptics = window.Capacitor?.Plugins?.Haptics
+      if (nativeHaptics) {
+        nativeHaptics.impact({ style: type === 'success' ? 'MEDIUM' : 'LIGHT' })
+        return
+      }
+      navigator.vibrate?.(type === 'success' ? [16, 28, 16] : 12)
+    } catch { /* enhancement only */ }
+  }
+
+  getAudioContext() {
+    if (!this.audioContext) this.audioContext = new (window.AudioContext || window.webkitAudioContext)()
+    return this.audioContext
+  }
+
+  softChime(enabled) {
+    if (!enabled) return
+    try {
+      const ctx = this.getAudioContext()
+      const now = ctx.currentTime
+      const gain = ctx.createGain()
+      gain.gain.setValueAtTime(.0001, now)
+      gain.gain.exponentialRampToValueAtTime(.05, now + .03)
+      gain.gain.exponentialRampToValueAtTime(.0001, now + .85)
+      gain.connect(ctx.destination)
+      ;[523.25, 659.25, 783.99].forEach((frequency, index) => {
+        const oscillator = ctx.createOscillator()
+        oscillator.type = 'sine'
+        oscillator.frequency.value = frequency
+        oscillator.connect(gain)
+        oscillator.start(now + index * .06)
+        oscillator.stop(now + .8)
+      })
+    } catch { /* audio enhancement only */ }
+  }
+
+  purr(enabled) {
+    if (!enabled) return
+    try {
+      const ctx = this.getAudioContext()
+      const now = ctx.currentTime
+      const oscillator = ctx.createOscillator()
+      const gain = ctx.createGain()
+      const filter = ctx.createBiquadFilter()
+      oscillator.type = 'sawtooth'
+      oscillator.frequency.setValueAtTime(24, now)
+      oscillator.frequency.linearRampToValueAtTime(29, now + .7)
+      filter.type = 'lowpass'
+      filter.frequency.value = 95
+      gain.gain.setValueAtTime(.0001, now)
+      gain.gain.exponentialRampToValueAtTime(.04, now + .05)
+      gain.gain.exponentialRampToValueAtTime(.0001, now + .9)
+      oscillator.connect(filter); filter.connect(gain); gain.connect(ctx.destination)
+      oscillator.start(now); oscillator.stop(now + .92)
+    } catch { /* audio enhancement only */ }
+  }
+}
+
+const app = new TailRoomApp(document.getElementById('app'))
+window.__TAIL_ROOM__ = app
+
+if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+  window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}))
+}

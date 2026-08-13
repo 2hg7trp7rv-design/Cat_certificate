@@ -1,0 +1,47 @@
+      const rect = scene.getBoundingClientRect()
+      const x = Math.max(0, Math.min(rect.width, event.clientX - rect.left))
+      const y = Math.max(0, Math.min(rect.height, event.clientY - rect.top))
+      return { x, y, nx: (x / rect.width - .5) * 2, ny: (y / rect.height - .5) * 2 }
+    }
+
+    scene.addEventListener('pointerdown', (event) => {
+      if (this.activity === 'eating') return
+      const point = pointFor(event)
+      scene.setPointerCapture?.(event.pointerId)
+      scene.classList.add('is-touching')
+      pointerDown = true
+      lastPoint = point
+      if (this.playMode) {
+        const ball = $('#toy-ball')
+        if (ball) { ball.style.left = `${point.x}px`; ball.style.top = `${point.y}px` }
+      }
+    })
+
+    scene.addEventListener('pointermove', (event) => {
+      const point = pointFor(event)
+      updateEyeTarget(petStage, this.state.pet.kind, point.nx, point.ny)
+      if (!pointerDown || !lastPoint) return
+      const distance = Math.hypot(point.x - lastPoint.x, point.y - lastPoint.y)
+      if (this.playMode) {
+        playDistance += distance
+        const ball = $('#toy-ball')
+        const bar = $('#play-progress-bar')
+        if (ball) { ball.style.left = `${point.x}px`; ball.style.top = `${point.y}px` }
+        if (bar) bar.style.width = `${Math.min(100, playDistance / 4.2)}%`
+        if (playDistance > 420 && !this.playCompleted) {
+          this.playCompleted = true
+          ball?.classList.add('is-complete')
+          window.setTimeout(() => this.handlePlayComplete(), 420)
+        }
+      } else {
+        strokeDistance += distance
+        if (distance > 5 && Math.random() > .78) this.spawnTouchHeart(scene, point.x, point.y)
+      }
+      lastPoint = point
+    })
+
+    const end = (event) => {
+      if (!pointerDown) return
+      if (scene.hasPointerCapture?.(event.pointerId)) scene.releasePointerCapture(event.pointerId)
+      scene.classList.remove('is-touching')
+      pointerDown = false
