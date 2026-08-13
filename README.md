@@ -19,15 +19,9 @@
 - 制作者用の `+6時間 / +1日 / +30日` 時間確認
 - ブラウザ通知の動作見本
 
-## 画面
+## 画面確認
 
-| 初回設定 | 猫の部屋 |
-|---|---|
-| ![初回設定](docs/screenshots/onboarding.png) | ![猫の部屋](docs/screenshots/cat-home.png) |
-
-| 成体の犬 | 制作者設定 |
-|---|---|
-| ![成体の犬](docs/screenshots/dog-adult.png) | ![制作者設定](docs/screenshots/settings.png) |
+制作者用Vercel URLで、初回設定・猫の部屋・成体の犬・制作者設定をスマートフォンから確認します。
 
 ## 実行と品質確認
 
