@@ -1,0 +1,110 @@
+          ${coatOptions.map((item) => `<button data-coat="${item.id}" class="${coat === item.id ? 'is-selected' : ''}" aria-pressed="${coat === item.id}"><span style="background:${item.swatch}"></span>${item.label}</button>`).join('')}
+        </div>
+        <div class="personality-list" aria-label="性格">
+          ${personalityOptions.map((item) => `<button data-personality="${item.id}" class="${personality === item.id ? 'is-selected' : ''}" aria-pressed="${personality === item.id}"><span class="radio-dot"></span><span><strong>${item.title}</strong><small>${item.description}</small></span></button>`).join('')}
+        </div>
+      </div>`
+    }
+
+    if (step === 3) {
+      body = `<div class="onboarding__naming page-enter">
+        <span class="section-kicker">03 / NAME</span>
+        <h2>名前を呼んであげよう</h2>
+        <p>この名前が、これから積み重なる思い出の中心になります。</p>
+        <div class="naming-preview">${petSvg({ kind, coat, activity: 'petted', mood: 'calm', eyeY: -.15 })}<div class="naming-preview__bubble">はじめまして。</div></div>
+        <label class="text-field"><span>この子の名前</span><input id="pet-name" value="${escapeHTML(name)}" maxlength="10" placeholder="${kind === 'cat' ? 'こむぎ' : 'むぎ'}" autocomplete="off"><small><b id="name-count">${name.length}</b>/10</small></label>
+        <label class="text-field text-field--secondary"><span>あなたの呼び名 <em>任意</em></span><input id="player-name" value="${escapeHTML(playerName)}" maxlength="10" placeholder="例：しんや" autocomplete="off"></label>
+        <div class="routine-grid" aria-label="生活時間">
+          <label><span>起きる時間</span><input id="wake-time" type="time" value="${wakeTime}"></label>
+          <label><span>朝ごはん</span><input id="breakfast-time" type="time" value="${breakfastTime}"></label>
+          <label><span>夜ごはん</span><input id="dinner-time" type="time" value="${dinnerTime}"></label>
+          <label><span>寝る時間</span><input id="bedtime" type="time" value="${bedtime}"></label>
+        </div>
+        <div class="final-message"><span>今日から、${escapeHTML(petName)}との暮らしが始まります。</span><small>ごはんが遅れれば空腹になり、寝る時間にはあなたの近くで休みます。</small></div>
+      </div>`
+    }
+
+    this.root.innerHTML = `<main class="onboarding">
+      <div class="onboarding__ambient onboarding__ambient--one"></div><div class="onboarding__ambient onboarding__ambient--two"></div>
+      <header class="onboarding__header">${brandMark()}<div class="onboarding__steps" aria-label="全4ステップ中 ${step + 1}ステップ">${[0,1,2,3].map((index) => `<span class="${index <= step ? 'is-active' : ''}"></span>`).join('')}</div></header>
+      <section class="onboarding__body">${body}</section>
+      <footer class="onboarding__footer">
+        ${step > 0 ? `<button id="back-step" class="button button--ghost">${icon('back', 19)} 戻る</button>` : '<span></span>'}
+        ${step < 3 ? `<button id="next-step" class="button button--primary">次へ ${icon('forward', 19)}</button>` : `<button id="start-game" class="button button--primary button--start">一緒に暮らす ${icon('forward', 19)}</button>`}
+      </footer>
+    </main>`
+
+    this.bindOnboarding()
+  }
+
+  bindOnboarding() {
+    $('#next-step')?.addEventListener('click', () => {
+      this.onboarding.step = Math.min(3, this.onboarding.step + 1)
+      this.render()
+    })
+    $('#back-step')?.addEventListener('click', () => {
+      this.onboarding.step = Math.max(0, this.onboarding.step - 1)
+      this.render()
+    })
+    $$('[data-kind]').forEach((button) => button.addEventListener('click', () => {
+      const kind = button.dataset.kind
+      if (kind === this.onboarding.kind) return
+      if (kind === 'dog' && this.onboarding.name === 'こむぎ') this.onboarding.name = 'むぎ'
+      if (kind === 'cat' && this.onboarding.name === 'むぎ') this.onboarding.name = 'こむぎ'
+      this.onboarding.kind = kind
+      this.render()
+    }))
+    $$('[data-coat]').forEach((button) => button.addEventListener('click', () => {
+      this.onboarding.coat = button.dataset.coat
+      this.render()
+    }))
+    $$('[data-personality]').forEach((button) => button.addEventListener('click', () => {
+      this.onboarding.personality = button.dataset.personality
+      this.render()
+    }))
+    $('#pet-name')?.addEventListener('input', (event) => {
+      this.onboarding.name = event.target.value.slice(0, 10)
+      const count = $('#name-count')
+      if (count) count.textContent = this.onboarding.name.length
+      const message = $('.final-message span')
+      const fallback = this.onboarding.kind === 'cat' ? 'こむぎ' : 'むぎ'
+      if (message) message.textContent = `今日から、${this.onboarding.name.trim() || fallback}との暮らしが始まります。`
+    })
+    $('#player-name')?.addEventListener('input', (event) => {
+      this.onboarding.playerName = event.target.value.slice(0, 10)
+    })
+    ;[
+      ['wake-time', 'wakeTime'],
+      ['breakfast-time', 'breakfastTime'],
+      ['dinner-time', 'dinnerTime'],
+      ['bedtime', 'bedtime'],
+    ].forEach(([id, key]) => $('#' + id)?.addEventListener('input', (event) => {
+      this.onboarding[key] = event.target.value
+    }))
+    $('#start-game')?.addEventListener('click', () => {
+      const profile = {
+        kind: this.onboarding.kind,
+        coat: this.onboarding.coat,
+        personality: this.onboarding.personality,
+        name: this.onboarding.name.trim() || (this.onboarding.kind === 'cat' ? 'こむぎ' : 'むぎ'),
+      }
+      const routine = {
+        wakeTime: this.onboarding.wakeTime,
+        breakfastTime: this.onboarding.breakfastTime,
+        dinnerTime: this.onboarding.dinnerTime,
+        bedtime: this.onboarding.bedtime,
+      }
+      this.state = beginGame(this.state, profile, this.onboarding.playerName, routine, this.now())
+      this.activity = 'greeting'
+      this.save()
+      this.softChime(true)
+      this.haptic('success')
+      this.render()
+      this.announce(`${profile.name}との暮らしが始まりました。`)
+      window.setTimeout(() => {
+        this.activity = 'idle'
+        this.render()
+      }, 1800)
+    })
+  }
+
