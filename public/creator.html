@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <meta name="theme-color" content="#eee6dc">
+  <title>Tail Room — Creator Preview</title>
+  <style>
+    *{box-sizing:border-box}
+    html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#ded7ce}
+    iframe{display:block;width:100%;height:100%;border:0;background:#f7f2eb}
+  </style>
+</head>
+<body>
+  <iframe id="game" src="/index.html?creator-shell=2" title="Tail Room Creator Preview"></iframe>
+  <script>
+    const frame = document.getElementById('game');
+    frame.addEventListener('load', () => {
+      try {
+        const doc = frame.contentDocument;
+        const style = doc.createElement('style');
+        style.textContent = `
+          html,body{height:100%;min-height:0}
+          body{overflow:hidden}
+          .app{height:100dvh;min-height:0;max-height:none}
+          .screen{overflow-y:auto;overflow-x:hidden;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+          .screen::-webkit-scrollbar{display:none}
+          .intro{padding-bottom:calc(34px + env(safe-area-inset-bottom));scroll-padding-bottom:110px}
+          .intro-head,.intro-copy,.pet-picker,.form-grid{flex:0 0 auto}
+          .intro .primary{flex:0 0 auto;min-height:56px;margin-top:18px;margin-bottom:calc(12px + env(safe-area-inset-bottom));position:sticky;bottom:calc(12px + env(safe-area-inset-bottom));z-index:6;box-shadow:0 16px 38px rgba(49,44,41,.34)}
+          @media(max-height:820px){.intro{gap:14px}.intro-copy{margin-top:14px}.intro-copy p{margin-top:9px;line-height:1.55}.intro h1{font-size:clamp(30px,8vw,38px)}.pet-card{min-height:154px}.mini-pet{height:112px}}
+          @media(max-height:700px){.intro-copy{margin-top:5px}.pet-card{min-height:136px}.mini-pet{height:96px}.field input{height:45px}}
+        `;
+        doc.head.appendChild(style);
+      } catch (error) {
+        console.error('Creator shell style injection failed', error);
+      }
+    });
+  </script>
+</body>
+</html>
