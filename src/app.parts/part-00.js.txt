@@ -1,0 +1,110 @@
+import {
+  DEFAULT_ROUTINE,
+  HOUR,
+  DAY,
+  STORAGE_KEY,
+  advanceVirtualTime,
+  applyElapsedTime,
+  beginGame,
+  feedCompanion,
+  getDaysTogether,
+  getGreeting,
+  getGrowthStage,
+  getMealStatus,
+  getPetMood,
+  getTimePhase,
+  getVirtualNow,
+  isSleepTime,
+  parseState,
+  petCompanion,
+  playWithCompanion,
+  resetVirtualTime,
+  restCompanion,
+  serializeState,
+} from './game-state.js'
+import { brandMark, icon } from './icons.js'
+import { petSvg, updateEyeTarget } from './pet-art.js'
+
+const $ = (selector, root = document) => root.querySelector(selector)
+const $$ = (selector, root = document) => [...root.querySelectorAll(selector)]
+const escapeHTML = (value = '') => String(value).replace(/[&<>'"]/g, (char) => ({
+  '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;',
+}[char]))
+
+const safeStorage = {
+  get(key) {
+    try { return window.localStorage?.getItem(key) ?? null } catch { return null }
+  },
+  set(key, value) {
+    try { window.localStorage?.setItem(key, value); return true } catch { return false }
+  },
+  remove(key) {
+    try { window.localStorage?.removeItem(key); return true } catch { return false }
+  },
+}
+
+const phaseLabels = {
+  morning: '朝の部屋',
+  day: '昼の部屋',
+  evening: '夕暮れの部屋',
+  night: '夜の部屋',
+}
+
+const coatOptions = [
+  { id: 'cream', label: 'ミルク', swatch: '#D9B997' },
+  { id: 'ginger', label: 'アプリコット', swatch: '#C9814F' },
+  { id: 'charcoal', label: 'スモーク', swatch: '#5F6265' },
+]
+
+const personalityOptions = [
+  { id: 'gentle', title: 'おだやか', description: 'そばで静かに過ごすのが好き' },
+  { id: 'curious', title: '好奇心いっぱい', description: '新しいものを見つけるのが得意' },
+  { id: 'sleepy', title: 'のんびり', description: '安心できる場所で眠るのが好き' },
+]
+
+class TailRoomApp {
+  constructor(root) {
+    this.root = root
+    const params = new URLSearchParams(location.search)
+    let restored = parseState(safeStorage.get(STORAGE_KEY))
+    const demoKind = params.get('demo')
+    if (demoKind === 'cat' || demoKind === 'dog') {
+      const actualNow = Date.now()
+      const demoDays = Math.max(0, Math.min(365, Number(params.get('days') || 0)))
+      restored = beginGame(
+        restored,
+        {
+          kind: demoKind,
+          name: demoKind === 'dog' ? 'ルカ' : 'こむぎ',
+          coat: demoKind === 'dog' ? 'ginger' : 'cream',
+          personality: demoKind === 'dog' ? 'curious' : 'gentle',
+        },
+        '',
+        DEFAULT_ROUTINE,
+        actualNow,
+      )
+      restored.pet.createdAt = actualNow - demoDays * DAY
+      restored.pet.lastFedAt = actualNow
+      restored.lastSeenAt = actualNow
+    }
+    this.state = applyElapsedTime(restored, getVirtualNow(restored))
+    this.phase = getTimePhase(new Date(getVirtualNow(this.state)))
+    this.activity = 'greeting'
+    this.playMode = false
+    this.foodOpen = false
+    this.panel = ['settings', 'journal', 'room'].includes(params.get('panel')) ? params.get('panel') : 'home'
+    this.coachmarkVisible = true
+    this.toastTimer = null
+    this.activityTimer = null
+    this.playCompleted = false
+    this.audioContext = null
+    this.lastCareNoticeKey = ''
+    this.onboarding = {
+      step: 0,
+      kind: 'cat',
+      coat: 'cream',
+      personality: 'gentle',
+      name: 'こむぎ',
+      playerName: '',
+      wakeTime: DEFAULT_ROUTINE.wakeTime,
+      breakfastTime: DEFAULT_ROUTINE.breakfastTime,
