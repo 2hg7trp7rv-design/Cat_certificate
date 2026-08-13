@@ -1,0 +1,14 @@
+    return `<div id="sheet-backdrop" class="sheet-backdrop"><section class="bottom-sheet food-sheet sheet-enter" role="dialog" aria-modal="true" aria-labelledby="food-title"><div class="sheet-handle"></div><header class="sheet-header"><div><span class="section-kicker">MEAL</span><h2 id="food-title">${escapeHTML(pet.name)}に何をあげる？</h2></div><button id="close-food" class="icon-button icon-button--muted" aria-label="閉じる">${icon('close', 20)}</button></header><div class="food-list">${foods.map(([id,name,note,tag,iconName]) => `<button data-food="${id}"><span class="food-icon food-icon--${id}">${icon(iconName, 24)}</span><span><strong>${name}</strong><small>${note}</small></span><em>${tag}</em></button>`).join('')}</div><p class="sheet-note">朝・夜の予定時刻を過ぎると空腹になり、アプリ版では通知されます。死亡や取り返しのつかない罰はありません。</p></section></div>`
+  }
+
+  journalHTML(pet) {
+    const days = getDaysTogether(pet, this.now())
+    const memoryIcon = (type) => icon(type === 'food' ? 'utensils' : type === 'play' ? 'sparkles' : type === 'sleep' ? 'moon' : type === 'home' ? 'home' : 'heart', 17)
+    const entries = this.state.memories.length
+      ? this.state.memories.map((memory, index) => `<article class="journal-entry"><div class="journal-entry__timeline"><span>${memoryIcon(memory.icon)}</span>${index < this.state.memories.length - 1 ? '<i></i>' : ''}</div><div class="journal-entry__content"><time>${new Intl.DateTimeFormat('ja-JP', { month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }).format(memory.createdAt)}</time><h2>${escapeHTML(memory.title)}</h2><p>${escapeHTML(memory.body)}</p></div></article>`).join('')
+      : `<div class="empty-state">${icon('coffee', 30)}<strong>記録はこれから</strong><p>${escapeHTML(pet.name)}と触れ合うと、ここに小さな出来事が残ります。</p></div>`
+    return `<section class="full-panel journal-panel panel-enter" role="dialog" aria-modal="true" aria-labelledby="journal-title"><header class="panel-header"><button data-close-panel class="icon-button icon-button--muted" aria-label="戻る">${icon('back', 21)}</button><div><span class="section-kicker">MEMORIES</span><h1 id="journal-title">${escapeHTML(pet.name)}との記録</h1></div><span class="panel-header__spacer"></span></header><div class="journal-summary"><div class="journal-summary__mark">${icon('heart', 26)}</div><div><small>一緒に暮らして</small><strong>${days}<em>日</em></strong></div><p>大きな出来事より、何気ない反応が思い出になっていきます。</p></div><div class="journal-list">${entries}</div></section>`
+  }
+
+  livingHTML() {
+    const room = this.state.room

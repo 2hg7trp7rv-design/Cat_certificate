@@ -1,0 +1,28 @@
+      if (type === 'energy') return value < 42 ? '眠たそう' : value > 82 ? '元気いっぱい' : '落ち着いている'
+      return value > 84 ? 'とても安心' : value > 62 ? '安心している' : 'そばにいてほしい'
+    }
+    const nextMealTime = new Intl.DateTimeFormat('ja-JP', { hour: '2-digit', minute: '2-digit' }).format(new Date(mealStatus.next.at))
+    const bedtime = this.state.routine.bedtime
+    return `<div class="wellbeing-card" aria-label="ペットの様子">
+      <div class="${mealStatus.overdue ? 'is-alert' : ''}">${icon('utensils', 15)}<span><small>おなか · 次 ${nextMealTime}</small><strong>${label(pet.fullness, 'fullness')}</strong></span></div>
+      <div>${icon('battery', 15)}<span><small>元気</small><strong>${label(pet.energy, 'energy')}</strong></span></div>
+      <div>${icon('moon', 15)}<span><small>就寝 ${bedtime}</small><strong>${isSleepTime(this.state.routine, new Date(now)) ? '一緒に眠っている' : label(pet.comfort, 'comfort')}</strong></span></div>
+    </div>`
+  }
+
+  dockHTML() {
+    const sleeping = this.activity === 'sleeping' || isSleepTime(this.state.routine, this.virtualDate())
+    return `<nav class="bottom-dock" aria-label="お世話メニュー">
+      <button id="feed-button" class="dock-button"><span>${icon('soup', 23)}</span><small>ごはん</small></button>
+      <button id="play-button" class="dock-button dock-button--primary ${this.playMode ? 'is-active' : ''}"><span>${icon(this.playMode ? 'bone' : 'toy', 24)}</span><small>${this.playMode ? '遊び中' : 'あそぶ'}</small></button>
+      <button id="rest-button" class="dock-button"><span>${icon('moon', 23)}</span><small>${sleeping ? 'ねむってる' : 'やすむ'}</small></button>
+      <button id="living-button" class="dock-button"><span>${icon('more', 24)}</span><small>くらし</small></button>
+    </nav>`
+  }
+
+  foodSheetHTML(pet) {
+    const foods = [
+      ['daily', 'いつものごはん', 'おなかをしっかり満たす', '毎日の基本', 'utensils'],
+      ['fish', '香りのいいお魚', '少し特別な日のごはん', 'なかよし +3', 'fish'],
+      ['treat', 'ひとくちおやつ', '今すぐ少しだけ喜ばせる', '軽め', 'sparkles'],
+    ]

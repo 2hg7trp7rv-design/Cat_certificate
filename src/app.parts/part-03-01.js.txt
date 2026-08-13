@@ -1,0 +1,21 @@
+  roomSceneHTML(pet, phase, mood, growth, isSleeping) {
+    const visualActivity = this.playMode ? 'playing' : isSleeping ? 'sleeping' : this.activity
+    return `<div id="room-scene" class="room-scene room-scene--${phase} room-scene--theme-${this.state.room.theme} ${this.playMode ? 'is-playing' : ''} ${this.state.reduceMotion ? 'reduce-motion' : ''}">
+      <div class="room-scene__wall"></div>
+      <div class="room-window" aria-hidden="true"><div class="room-window__sky"><span class="room-window__orb"></span><span class="room-window__cloud room-window__cloud--one"></span><span class="room-window__cloud room-window__cloud--two"></span><span class="room-window__star room-window__star--one"></span><span class="room-window__star room-window__star--two"></span><span class="room-window__star room-window__star--three"></span></div><div class="room-window__frame"></div></div>
+      <div class="room-shelf" aria-hidden="true"><span class="room-shelf__book room-shelf__book--one"></span><span class="room-shelf__book room-shelf__book--two"></span><span class="room-shelf__vase"></span></div>
+      ${this.state.room.plantVisible ? '<div class="room-plant" aria-hidden="true"><span class="leaf leaf--1"></span><span class="leaf leaf--2"></span><span class="leaf leaf--3"></span><span class="leaf leaf--4"></span><span class="room-plant__pot"></span></div>' : ''}
+      <div class="room-floor"></div><div class="room-rug" aria-hidden="true"></div><div class="pet-cushion pet-cushion--${this.state.room.cushion}" aria-hidden="true"><span></span></div>
+      <div id="pet-stage" class="pet-stage pet-stage--${growth.id}" style="--pet-growth:${growth.scale}">${petSvg({ kind: pet.kind, coat: pet.coat, activity: visualActivity, mood })}</div>
+      ${this.playMode ? `<div class="play-instruction">${icon('pointer', 16)} 指でおもちゃを動かそう</div><div id="toy-ball" class="toy-ball" style="left:72px;top:72px" aria-hidden="true"><span></span></div><div class="play-progress"><span id="play-progress-bar" style="width:0%"></span></div>` : ''}
+      ${!this.playMode && !isSleeping && this.activity === 'idle' ? `<div class="petting-hint">${icon('hand', 15)} そっと撫でてみる</div>` : ''}
+      ${isSleeping && !this.playMode ? `<div class="sleeping-hint">${icon('moon', 15)} ${escapeHTML(pet.name)}も、あなたの時間に合わせて休んでいます</div>` : ''}
+    </div>`
+  }
+
+  wellbeingHTML(pet, mealStatus, now) {
+    const label = (value, type) => {
+      if (type === 'fullness') {
+        if (mealStatus.overdue) return `${mealStatus.dueMeal.label}を待っている`
+        return value < 50 ? 'おなかが空いている' : value > 88 ? 'おなかいっぱい' : 'ちょうどいい'
+      }
