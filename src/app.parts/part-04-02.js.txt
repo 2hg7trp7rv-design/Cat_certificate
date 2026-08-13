@@ -1,0 +1,43 @@
+      this.state.reduceMotion = event.target.checked
+      this.save(); this.render()
+    })
+    ;[
+      ['routine-wake', 'wakeTime'],
+      ['routine-breakfast', 'breakfastTime'],
+      ['routine-dinner', 'dinnerTime'],
+      ['routine-bedtime', 'bedtime'],
+    ].forEach(([id, key]) => $('#' + id)?.addEventListener('change', (event) => {
+      this.state.routine = { ...this.state.routine, [key]: event.target.value }
+      this.save()
+      this.render()
+    }))
+    $('#notification-button')?.addEventListener('click', () => this.requestNotifications())
+    $$('[data-advance-ms]').forEach((button) => button.addEventListener('click', () => {
+      this.handleAdvanceTime(Number(button.dataset.advanceMs || 0))
+    }))
+    $('#reset-clock')?.addEventListener('click', () => {
+      this.state = resetVirtualTime(this.state)
+      const now = this.now()
+      this.state = applyElapsedTime(this.state, now)
+      this.phase = getTimePhase(new Date(now))
+      this.save(); this.render()
+      this.showToast('確認用の時刻を、実際の現在時刻へ戻しました。')
+    })
+    $('#test-care-notice')?.addEventListener('click', () => this.maybeShowCareNotice(true))
+    $('#reset-game')?.addEventListener('click', () => {
+      if (window.confirm('この端末の暮らしの記録をすべて消します。元に戻せません。')) {
+        safeStorage.remove(STORAGE_KEY)
+        location.reload()
+      }
+    })
+    this.bindRoomInteraction()
+  }
+
+  async requestNotifications() {
+    if (typeof Notification === 'undefined') {
+      this.showToast('このブラウザでは通知を確認できません。正式版ではiOS通知を使用します。')
+      return
+    }
+    try {
+      const permission = await Notification.requestPermission()
+      this.state.notificationEnabled = permission === 'granted'
