@@ -1,0 +1,46 @@
+name: Install Tail Room Preview v0.5
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".install/v05.part*"
+      - ".github/workflows/install-v05.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  install:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reconstruct verified repository
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .install/v05.part* > /tmp/v05.b64
+          base64 --decode /tmp/v05.b64 > /tmp/v05.zip
+          echo "222af47a77a06f09fbe02a261e412b8f2c9f6590c8ea890d8f9c049c7ed6e944  /tmp/v05.zip" | sha256sum --check -
+          unzip -t /tmp/v05.zip
+          find . -mindepth 1 -maxdepth 1 ! -name .git ! -name .github ! -name .install -exec rm -rf {} +
+          unzip -q /tmp/v05.zip -d .
+          rm -rf .install
+          rm -f .github/workflows/install-v05.yml
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - name: Commit verified v0.5
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet && exit 0
+          git commit -m "Rebuild Tail Room cat core preview 0.5.0"
+          git push
