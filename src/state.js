@@ -1,5 +1,5 @@
-export const APP_VERSION=5
-export const STORAGE_KEY='tail-room-state-v5'
+export const APP_VERSION=6
+export const STORAGE_KEY='tail-room-state-v6'
 export const HOUR=3_600_000
 export const DAY=24*HOUR
 const MINUTE=60_000
