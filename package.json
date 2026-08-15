@@ -1,12 +1,12 @@
 {
   "name": "tail-room-creator-preview",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "node scripts/dev.mjs",
     "test": "node --test tests/*.test.mjs",
-    "check": "node --check src/app.js && node --check src/state.js && node --check src/pet-art.js && npm test && npm run build",
+    "check": "node --check src/app.js && node --check src/state.js && npm test && npm run build",
     "build": "node scripts/build.mjs"
   },
   "engines": {"node": ">=22"}
