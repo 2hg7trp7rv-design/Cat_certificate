@@ -1,6 +1,0 @@
-node_modules/
-.DS_Store
-.vercel/
-*.log
-docs/screenshots/
-public/*.png
