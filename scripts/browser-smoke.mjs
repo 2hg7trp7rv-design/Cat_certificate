@@ -389,8 +389,36 @@ async function runRoomCase(size) {
     await driver.navigate(`${APP_ORIGIN}/?qa=${size}&scene=room&debug=1`)
     await waitForScene('RoomScene')
     result.warmedFps = await warmedFpsDiagnostic()
+    await driver.navigate(`${APP_ORIGIN}/?qa=${size}&scene=room`)
+    await waitForScene('RoomScene')
     result.runtime = await driver.execute(RUNTIME_SNAPSHOT)
     result.screenshot = await driver.saveElementScreenshot('#app', `room-${size}.png`)
+    if (size === '393x852') {
+      result.night = await driver.execute(`
+        const app = document.querySelector('#app');
+        const advance = document.querySelector('[data-time="3600000"]');
+        let leftInitialNight = app?.dataset.phase !== 'night';
+        let shiftedHours = 0;
+        while (shiftedHours < 25) {
+          advance.click();
+          shiftedHours += 1;
+          if (app.dataset.phase !== 'night') leftInitialNight = true;
+          if (leftInitialNight && app.dataset.phase === 'night') break;
+        }
+        return { phase: app?.dataset.phase || null, shiftedHours, virtualTime: document.querySelector('#debugTime')?.textContent || null };
+      `)
+      await sleep(500)
+      result.night.runtime = await driver.execute(RUNTIME_SNAPSHOT)
+      result.night.screenshot = await driver.saveElementScreenshot('#app', 'room-393x852-night.png')
+      assert.equal(result.night.phase, 'night', '393x852: creator time controls did not reach the night phase')
+      assert.equal(result.night.runtime.qa.scene, 'RoomScene', '393x852 night: RoomScene is not active')
+      assert.equal(result.night.runtime.webgl?.contextLost, false, '393x852 night: WebGL context is lost')
+      assert.deepEqual(
+        { width: result.night.screenshot.width, height: result.night.screenshot.height },
+        { width: 393, height: 852 },
+        '393x852 night: element screenshot is not clipped to the exact app bounds',
+      )
+    }
     result.browserLogs = await driver.browserLogs()
     assertRoomSnapshot(result.runtime, size)
     const [expectedWidth, expectedHeight] = size.split('x').map(Number)
@@ -456,7 +484,7 @@ async function runInteractionCase() {
   const result = { size: '393x852', status: 'running', steps: [] }
   report.interaction = result
   try {
-    await driver.navigate(`${APP_ORIGIN}/?qa=393x852&scene=first-meeting&debug=1`)
+    await driver.navigate(`${APP_ORIGIN}/?qa=393x852&scene=first-meeting`)
     await waitForScene('FirstMeetingScene')
     result.steps.push({ name: 'first-meeting-ready', screenshot: await driver.saveElementScreenshot('#app', 'first-meeting-ready.png') })
 
