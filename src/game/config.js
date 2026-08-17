@@ -22,7 +22,6 @@ export function createGameConfig({ store, ui, onReady } = {}) {
       pixelArt: false,
       roundPixels: false,
       powerPreference: 'high-performance',
-      failIfMajorPerformanceCaveat: true,
     },
     scale: {
       mode: Phaser.Scale.FIT,

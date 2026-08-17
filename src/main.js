@@ -25,9 +25,9 @@ function applyQaSize(size) {
 function supportsWebGL() {
   try {
     const canvas = document.createElement('canvas')
-    const context = canvas.getContext('webgl2', { failIfMajorPerformanceCaveat: true })
-      || canvas.getContext('webgl', { failIfMajorPerformanceCaveat: true })
-      || canvas.getContext('experimental-webgl', { failIfMajorPerformanceCaveat: true })
+    const context = canvas.getContext('webgl2')
+      || canvas.getContext('webgl')
+      || canvas.getContext('experimental-webgl')
     return Boolean(context)
   } catch {
     return false

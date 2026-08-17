@@ -148,8 +148,14 @@ test('Phaser is explicitly configured for WebGL', async () => {
   const configPath = resolve(ROOT, 'src/game/config.js')
   assert.equal(await exists(configPath), true, 'Missing src/game/config.js')
   const source = await readText(configPath)
+  const entry = await readText(resolve(ROOT, 'src/main.js'))
   assert.match(source, /\btype\s*:\s*Phaser\.WEBGL\b/, 'Phaser config must use `type: Phaser.WEBGL`')
   assert.doesNotMatch(source, /\btype\s*:\s*Phaser\.(?:AUTO|CANVAS|HEADLESS)\b/, 'AUTO/CANVAS/HEADLESS renderer fallback is not accepted for v0.7')
+  assert.doesNotMatch(
+    `${entry}\n${source}`,
+    /failIfMajorPerformanceCaveat\s*:\s*true/,
+    'WebGL must remain available on low-power GPUs; performance is validated separately',
+  )
 })
 
 test('room, furniture, cat, light, and shadow are named Phaser layers', async () => {
