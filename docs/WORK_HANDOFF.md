@@ -1,9 +1,9 @@
 # Tail Room Work 引き継ぎ書
 
-更新日: 2026-08-17 JST  
+更新日: 2026-08-18 JST
 状態: **このプロジェクトの現行方針を示す最優先資料**
 
-次にこのリポジトリを扱うWorkは、コード変更前に必ず本書を最後まで確認すること。READMEや既存画面より、本書の方針を優先する。
+次にこのリポジトリを扱うWorkは、コード変更前に必ず本書を最後まで確認すること。READMEや既存画面より、本書の方針を優先する。v0.7の測定値と検証境界は[`V07_VALIDATION.md`](V07_VALIDATION.md)を参照する。
 
 ---
 
@@ -44,8 +44,9 @@
 - リポジトリは改名済み。今後は`Cat_room`を使用する
 - 使用ブランチ: `main`
 - ユーザーの明示許可なしに別リポジトリや別の公開ブランチへ移さない
-- v0.6実装基準コミット: `738a3c3de011a6586987809947da48d4c43deee5`
-- Quality Gateはv0.6実装および本引き継ぎ反映時点でsuccess
+- v0.7検証済み実装コミット: `368a2cd99d6013460a16004992225fe67c290fd3`
+- v0.7検証: [Quality Gate Run 46](https://github.com/2hg7trp7rv-design/Cat_room/actions/runs/32046435711) — success
+- この文書の更新でHEADは進むため、上記SHAは不変の実装チェックポイントとして扱う
 - Work開始時には必ずmainの最新HEADとCIを再取得する
 
 ### Vercel
@@ -54,7 +55,8 @@
 - Vercel project id: `prj_x77pFkTy2D8nBYq0QKDZZtV59Bz3`
 - 現在の制作者確認URL: `https://cat-certificate.vercel.app`
 - ドメイン名は旧名称を維持しているが、現在のプロジェクトは`cats-room`
-- 本引き継ぎ時点でURLはREADY / HTTP 200
+- v0.7検証済みデプロイ: `dpl_Ad8LYruuA4UG5BskZvpVijdD6naY`
+- 上記デプロイは`368a2cd9...`へ対応し、READY / production。正本URLはHTTP 200
 - `https://cat-certificate-v06-smoke.vercel.app`は旧検証用。今後の正本URLとして使わない
 - デプロイIDはコミットごとに変わるため、Work開始時に最新値をVercelから取得する
 
@@ -66,48 +68,71 @@
 
 ## 3. 現在の実装状態
 
-現行はCreator Preview 0.6.0。
+現行はCreator Preview 0.7.0。
 
-### 動いているもの
+v0.7では、既存の状態エンジンを維持したまま、ゲーム世界をPhaser 4.2.1のWebGLキャンバスへ移行した。
 
-- 現実時刻
-- 朝食・夕食時刻
-- 睡眠時刻判定
-- 空腹、元気、安心、親密度の内部状態
-- 撫でた場所と速度の記録
-- 食事の好みの記録
-- 約120日での身体成長段階
-- 留守時間計算
-- 思い出データ
-- LocalStorage保存
-- 制作者用時間送り
-- GitHub Actionsによる構文検査、状態テスト、ビルド
-- Vercel自動デプロイ
+### v0.7で実装済み
 
-### 現在の重大な問題
+- BootScene、FirstMeetingScene、RoomScene、DebugScene
+- 部屋、影、家具、猫、前景、光の独立レイヤー
+- 猫と家具のCanvas内形状判定
+- 23個の独立した仮ラスターパーツ
+- 状態エンジンと8個のsystem facade
+- ローカル固定したPhaserとSHA-256検証
+- 静的な`dist/`生成とVercel配信
+- WebGL初期化失敗時の明示的なエラー表示
+- 320×667、393×852、430×932のQA表示モード
+- Chrome＋ANGLE SwiftShaderによるWebGL smokeとPNG証拠
 
-- 猫と部屋が1枚のラスタービジュアルへ焼き込まれている
-- `assets_source/scene_day_0.b64`から`scene_day_7.b64`を結合して背景表示している
-- 猫、窓、寝床、食器、玩具は透明DOMホットスポットで操作している
-- 食事、睡眠、遊びをしても猫の画像自体は変化しない
-- 猫の身体部位判定と家具の透明領域が重複している
-- 夜は昼画像全体を暗くしているだけ
-- 現在のラスタービジュアルは最終アートではない
-- `dist/`には旧v0.5の生成物が残っており、rootのv0.6ソースと一致していない
-- rootに内容が`あ`だけの不要ファイル`test`がある
-- 現行v0.6を拡張して完成へ向かうのはNG
+保存データ互換性のため、`src/state.js`のスキーマとLocalStorage keyはv6を維持している。Creator Preview 0.7.0は描画基盤の版であり、保存スキーマ版ではない。
+
+### v0.7で削除済み
+
+- 猫と部屋を焼き込んだ1枚画像
+- `assets_source/scene_day_*.b64`
+- 透明DOMホットスポット
+- 旧`src/app.js`
+- 古い追跡対象`dist/`
+- rootの不要ファイル`test`
+
+リポジトリ内に実行時GitHubローダーは確認されなかった。v0.6の実体はローカルBase64取得だったため、それを削除し、外部GitHub/CDN取得を禁止するテストを追加した。
+
+### 修正済みの重要な失敗点
+
+- 30秒更新のたびに`lastSeenAt`を進め、54秒未満の経過が永続的に失われる状態処理
+- Phaser 4のSceneManagerへ存在しない`launch()`を呼ぶDebugScene起動
+- Containerの`displayOrigin`を考慮せず、形状判定が表示位置からずれる入力
+- ガイドDOMがCanvas上の玩具入力を遮る問題
+- タップを撫でとして受理する問題、複数pointerの上書き、pointer-up最終区間の取りこぼし
+- WebGL2を先に試すpreflightとPhaserのWebGL1初期化条件の不一致
+- 保存済みデータでRoom QA画面が非決定的になる問題
+
+### 未完成・未検証
+
+- 仮ラスターパーツは最終アートではない
+- 猫はまだ呼吸、瞬き、耳、視線、しっぽ、姿勢遷移、歩行を持たない
+- 撫でている最中の身体反応、食事、睡眠は本番アニメーションではない
+- CIの夜間スクリーンショットでは顔を確認済みだが、実iPhoneでは未確認
+- 実GPUの目標60fps／最低30fpsは未確認
+- iOS Safari、TestFlight、音、触覚、通知は未実装または未検証
 
 ### Source of Truth
 
-コードの正本はrootの以下。
+コードの正本は以下。
 
 - `index.html`
-- `src/app.js`
+- `src/main.js`
+- `src/game/**`
 - `src/state.js`
+- `src/state/GameStateStore.js`
+- `src/ui/UIController.js`
 - `src/styles.css`
-- `tests/state.test.mjs`
+- `scripts/**`
+- `tests/**`
+- `vendor/phaser-4.2.1/**`
 
-`dist/`は生成物であり、現在は古い。編集対象にしない。次工程でGit管理から除外するか、完全に再生成する。
+`dist/`は生成物でありGit管理対象外。直接編集せず、`npm run build`で再生成する。
 
 ---
 
@@ -306,7 +331,11 @@
 
 ### 描画
 
-Phaser 4系/WebGLを第一候補とする。ただしWork開始時に公式ドキュメントで最新安定版とスマホ実行条件を再確認してからバージョンを固定する。
+Phaser 4.2.1を正確に固定し、`Phaser.WEBGL`で使用する。Phaser本体は`vendor/phaser-4.2.1/`へ保存し、ビルド時にSHA-256を検証する。
+
+`AUTO`またはCanvas rendererへの暗黙のフォールバックは使用しない。WebGL初期化に失敗した場合はDOMエラーを表示する。低消費電力GPUを一律に拒否せず、性能は実端末で別途検証する。
+
+Phaser 4.2.1には移動と角度Tweenの組み合わせに関する未解決報告[#7341](https://github.com/phaserjs/phaser/issues/7341)がある。v0.8で歩行と耳・しっぽ回転を組み合わせる際は連続テストを行い、問題が出た場合は全変換を同じ更新系へ寄せる。
 
 ### Canvas/WebGLで扱うもの
 
@@ -332,13 +361,16 @@ Phaser 4系/WebGLを第一候補とする。ただしWork開始時に公式ド�
 - エラー表示
 - アクセシビリティ用代替操作
 
-### 目標ディレクトリ
+### 現行ディレクトリ
 
 ```text
 src
 ├─ main.js
 ├─ game
 │  ├─ config.js
+│  ├─ phaser.js
+│  ├─ art
+│  │  └─ PlaceholderArt.js
 │  ├─ scenes
 │  │  ├─ BootScene.js
 │  │  ├─ FirstMeetingScene.js
@@ -359,12 +391,18 @@ src
 │  │  ├─ GrowthSystem.js
 │  │  ├─ MemorySystem.js
 │  │  └─ OfflineSimulation.js
-│  └─ input
-│     ├─ PettingInput.js
-│     └─ ObjectInput.js
+│  ├─ input
+│  │  ├─ HitArea.js
+│  │  ├─ PettingInput.js
+│  │  └─ ObjectInput.js
+│  └─ world
+│     └─ RoomWorld.js
+├─ state.js
 ├─ state
-├─ ui
-└─ native
+│  └─ GameStateStore.js
+├─ styles.css
+└─ ui
+   └─ UIController.js
 ```
 
 ### iOS
@@ -377,46 +415,59 @@ Webで以下の3体験が成立した時点で、完全なWeb完成を待たず�
 
 ---
 
-## 8. 現行コードの移行方針
+## 8. v0.7移行結果
 
-### 残す
+### 維持したもの
 
-- `src/state.js`の時間、食事、睡眠、保存、好み、思い出の考え方
-- `tests/state.test.mjs`
+- `src/state.js`の時間、食事、睡眠、保存、好み、思い出、成長の意味
+- `tests/state.test.mjs`と保存互換性
 - GitHub Actions Quality Gate
 - `vercel.json`のセキュリティヘッダー思想
 - 制作者用時間操作
 
-### 分割して移植
+### system facade追加・接続状況
 
-- 時刻処理 → `TimeSystem`
+正本ロジックの多くは引き続き`src/state.js`にあり、各systemは段階的に分離するための薄いfacadeである。完全移植済みとは扱わない。
+
+実行時に`GameStateStore`から接続済み:
+
+- 時刻 → `TimeSystem`
 - 空腹、元気、安心 → `NeedSystem`
 - 好み、親密度 → `RelationshipSystem`
 - 留守中処理 → `OfflineSimulation`
-- 思い出 → `MemorySystem`
 - 成長 → `GrowthSystem`
+- 習慣 → `HabitSystem`
+- 行動選択 → `BehaviorSystem`
 
-### 作り直す
+単体追加・テスト済みだが、runtimeへは未接続:
+
+- 思い出 → `MemorySystem`
+
+### 再構築済み
 
 - `index.html`
-- `src/app.js`
+- `src/main.js`
 - `src/styles.css`
-- 初回導線
-- メイン画面
-- 入力判定
-- 描画
-- 食事、睡眠、遊びの視覚表現
+- 初回導線とRoomScene
+- Canvas内入力判定
+- Phaser/WebGL描画
+- 静的ビルドとVercel配信
 
-### 削除対象
+### 削除済み
 
 - `assets_source/scene_day_*.b64`
-- 古い`dist/`
+- 追跡対象の古い`dist/`
 - rootの不要ファイル`test`
 - 透明DOMホットスポット
-- 実行時GitHubローダー
 - 背景へ猫を焼き込んだ画像
+- 旧`src/app.js`
 
-削除は、新しいv0.7基盤が同一コミットまたは検証済み一連のコミットで置き換わる状態にしてから行う。壊れた途中状態をmainへ送らない。
+### 意図的に残したもの
+
+- 保存スキーマ`version: 6`
+- LocalStorage key `tail-room-state-v6`
+
+描画版が0.7であることを理由に保存スキーマを7へ上げない。変更する場合はv6データの明示的な移行テストを先に作る。
 
 ---
 
@@ -424,37 +475,50 @@ Webで以下の3体験が成立した時点で、完全なWeb完成を待たず�
 
 ### 事前確認
 
-1. `main`のHEADと本書記載のコミット差分を確認
+1. `main`の最新HEADと本書の検証済み実装コミットとの差分を確認
 2. `npm ci`
 3. `npm run check`
-4. Vercelの現行URLがHTTP 200であることを確認
-5. 現行v0.6のスクリーンショットを比較基準として保存
+4. 最新Quality GateのWebGL evidence artifactを取得し、`report.json`とPNGを確認
+5. Vercelの最新deploymentが対象SHAへ対応し、正本URLがHTTP 200であることを確認
 
-### v0.7 描画基盤
+### v0.7実機ゲート
 
-1. 最新公式情報を確認しPhaser 4系の使用バージョンを固定
-2. WebGLキャンバスを導入
-3. BootScene、FirstMeetingScene、RoomScene、DebugSceneの最小構成を作る
-4. 猫と部屋を別レイヤーにする
-5. 一時素材でも猫を背景へ焼き込まない
-6. `state.js`を壊さず、新描画層へ状態を接続
-7. 猫と家具の入力をCanvas内の形状判定へ移す
-8. 320×667、393×852、430×932で画面検証
-9. Vercelは生成済み静的成果物をそのまま配信し、実行時GitHub取得を使わない
-10. CI、ビルド、Vercel、スクリーンショットを揃えてから報告
+1. 最低1台の実iPhone SafariでFirstMeetingSceneとRoomSceneを開く
+2. ゆっくり撫でる操作で命名パネルが開き、タップだけでは開かないことを確認
+3. 食器、寝床、玩具、猫の表示位置と入力位置が一致することを確認
+4. 夜間の猫の目、鼻、輪郭が読めることを確認
+5. バックグラウンド移行と復帰後に描画と状態が一致することを確認
+6. 実GPUで目標60fps、最低30fpsを計測する
+7. 機種、iOS版、Safari版、計測方法、スクリーンショットを記録する
+8. 問題があればv0.8へ進む前にv0.7を修正する
 
-### v0.7合格条件
+### v0.7条件の現在地
 
-- 1枚の猫＋部屋画像を使用していない
-- `assets_source`のBase64結合に依存しない
-- 透明DOMホットスポットを使わない
-- 猫、部屋、家具、光、影が別レイヤー
-- 夜でも猫の顔が読める
-- 横スクロールなし
-- 目標60fps、最低30fpsを下回らない
-- GitHub Actions success
-- Vercel READY / HTTP 200
-- 実機未確認なら実機確認済みと書かない
+| 条件 | 状態 | 根拠 |
+|---|---|---|
+| 猫＋部屋の焼き込みなし | OK | 23個の独立テクスチャと6レイヤー |
+| Base64結合なし | OK | architecture test |
+| 透明DOMホットスポットなし | OK | DOM検査とWebGL smoke |
+| 猫、部屋、家具、光、影を分離 | OK | layer order検査 |
+| 3サイズ、横スクロールなし | CIでOK | 320×667、393×852、430×932のPNGと寸法検査 |
+| 夜間の顔 | CIでOK／実機未確認 | 393×852、21:38相当のPNGを目視 |
+| 目標60fps、最低30fps | 未検証 | SwiftShader値は実GPU判定に使用不可 |
+| GitHub Actions | OK | Run 46 success。以後も最新runを確認 |
+| Vercel READY / HTTP 200 | OK | 検証済みdeployment。以後も最新値を確認 |
+| 実iPhone | 未確認 | 実機確認済みと書かない |
+
+### v0.8開始条件
+
+実機ゲートを閉じた後に以下を行う。
+
+1. `docs/VISUAL_BIBLE.md`を作成
+2. 仮ラスターパーツを完成アート扱いしない
+3. 猫の基準サイズ、pivot、関節、奥行きを固定
+4. 呼吸、瞬き、耳、視線、しっぽを実装
+5. 座る、伏せる、立つの姿勢遷移を実装
+6. 歩行中も猫の大きさを一定に保つ
+7. 状態とBehaviorSystemを動作へ接続
+8. 30秒観察して静止画に見えないことを検証
 
 ---
 
@@ -604,16 +668,13 @@ v0.9からv0.11の途中で開始。
 
 ## 14. Work開始時の最重要判断
 
-次のWorkは、v0.6のUIを微調整したり、静止画を追加したりしてはいけない。
+次のWorkは、v0.6へ戻ったり、仮素材を完成アートとして磨いたり、WebGL失敗をCanvasフォールバックで隠したりしてはいけない。
 
-最初の目的は、**状態エンジンを残したまま、ゲームの描画層をCanvas/WebGLへ置き換えること**である。
+最初に実iPhoneと実GPUでv0.7実機ゲートを閉じる。合格後は次の順序を守る。
 
-最初に完成させるのは機能量ではない。
+1. v0.8: 猫が30秒静止画に見えない
+2. v0.9: 撫でている最中に反応する
+3. v0.10: 食事が画面上で実際に起こる
+4. v0.11: 睡眠が画面上で実際に起こる
 
-1. 猫と部屋が別レイヤーである
-2. 猫が30秒静止しない
-3. 撫でている最中に反応する
-4. 食事が画面上で実際に起こる
-5. 睡眠が画面上で実際に起こる
-
-この順番を崩さない。
+Canvas/WebGL基盤そのものを再構築し直さず、現在の分離レイヤー、状態互換性、CI WebGL smokeを土台として進める。この順番を崩さない。

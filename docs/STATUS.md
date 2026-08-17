@@ -1,65 +1,75 @@
 # Tail Room Status
 
-更新日: 2026-08-17 JST
+更新日: 2026-08-18 JST
 
 ## Current
 
-Creator Preview 0.6.0 is live as a rejected visual reference. The next active milestone is **v0.7: Canvas/WebGL rendering rebuild**.
+Creator Preview 0.7.0のWebGL描画基盤は、ソース、テスト、静的ビルド、Vercel配信、CI上のソフトウェアWebGL検証まで実装済みです。
 
-Authoritative handoff: [WORK_HANDOFF.md](WORK_HANDOFF.md)
+次の実装マイルストーンは**v0.8: 猫の生命感**です。ただし、その前に実iPhoneと実GPUでv0.7の性能・入力ゲートを閉じる必要があります。
 
-## Verified current state
+最優先資料: [WORK_HANDOFF.md](WORK_HANDOFF.md)
 
-- Canonical repository: `2hg7trp7rv-design/Cat_room`
-- Branch: `main`
-- Creator preview: `https://cat-certificate.vercel.app`
-- Current production serves v0.6 and returns HTTP 200
-- GitHub Actions Quality Gate is passing
-- Real-time state, meal timing, sleep timing, growth, preferences, memories, save data and creator time controls exist
+検証詳細: [V07_VALIDATION.md](V07_VALIDATION.md)
 
-## Keep
+## Verified implementation checkpoint
 
-- `src/state.js` concepts and tests
-- Real-time and offline calculations
-- Preferences, memories and growth state
-- GitHub Actions quality gate
-- Creator time controls
+- Commit: `368a2cd99d6013460a16004992225fe67c290fd3`
+- GitHub Actions: [Quality Gate Run 46](https://github.com/2hg7trp7rv-design/Cat_room/actions/runs/32046435711) — success
+- Vercel deployment: `dpl_Ad8LYruuA4UG5BskZvpVijdD6naY` — READY / production
+- Creator preview: `https://cat-certificate.vercel.app` — HTTP 200
+- Engine: Phaser `4.2.1`, `Phaser.WEBGL`固定
 
-## Replace
+この後の文書更新で`main`のHEADは進むため、Work開始時には最新HEAD、最新Actions、最新Vercel deploymentを再取得する。
 
-- Single baked cat-and-room raster scene
-- Base64 scene chunks
-- Transparent DOM hotspots
-- DOM/CSS game-world rendering
-- Text-only action feedback
-- Runtime GitHub loading
+## Verified in repository
 
-## Repository issues to clean during v0.7
+- BootScene、FirstMeetingScene、RoomScene、DebugScene
+- 部屋、影、家具、猫、前景、光の6レイヤー
+- 猫と家具のCanvas内形状判定
+- 23個の独立した仮ラスターテクスチャ
+- 状態エンジンと8個のsystem facade
+- Phaser本体のローカル固定とSHA-256検証
+- 静的な`dist/`生成。`dist/`はGit管理せず、直接編集しない
+- Base64素材、透明DOMホットスポット、旧`src/app.js`、rootの不要ファイルを削除
+- 短い更新の繰り返しで時間経過が失われていた状態処理を修正
+- 保存互換性のため、`src/state.js`のスキーマとLocalStorage keyはv6を維持
 
-- `dist/` is stale and still contains old v0.5 output
-- `assets_source/scene_day_*.b64` is temporary
-- root file `test` contains only `あ` and is unnecessary
+## CI WebGL validation
 
-## Next milestone
+GitHub ActionsのChrome 151＋ANGLE SwiftShaderで以下が合格しています。
 
-Build a verified v0.7 foundation that:
+- WebGL 1.0 contextがactive、Canvasは1個、Canvas rendererへのフォールバックなし
+- 320×667、393×852、430×932でアプリ外形が指定寸法と一致
+- 横スクロールなし、透明DOMホットスポットなし、6レイヤー、23テクスチャ
+- 393×852の夜間画面で猫の顔を目視可能
+- ゆっくり撫でる → 名前パネル表示 → 既定名「こむぎ」で開始 → RoomScene → 食器 → 食事シートのタッチ導線
+- JavaScript 35ファイルの構文検査、31テスト、静的ビルド
 
-1. Uses Canvas/WebGL for the game world
-2. Separates cat, room, furniture, light and shadow
-3. Preserves the state engine
-4. Removes transparent DOM hotspots
-5. Deploys a static build directly to Vercel
-6. Passes CI and mobile-size screenshots before reporting completion
+## Validation boundary
+
+- CIはソフトウェアWebGLであり、実GPU、iOS Safari、実iPhoneではない
+- SwiftShaderの診断平均は320×667で18.42fps、393×852で14.18fps、430×932で18.43fps。性能合格判定には使用しない
+- 目標60fps／最低30fpsの実機基準は未合格ではなく**未検証**。実機測定が必要
+- クラウド閲覧用Chromeは独立したWebGL確認サイトでもcontextを取得できず、公開URLではエラー経路だけを確認した
+- 実iPhone確認、iOS Safari、バックグラウンド復帰は未実施
+
+## Next gate
+
+1. 最新`main`、Quality Gate、Vercel deploymentを再確認
+2. 最低1台の実iPhone Safariで初回導線とRoomSceneを確認
+3. 320×667、393×852、430×932相当のレイアウト証拠を揃える
+4. 夜間の猫の顔、形状判定、食器・寝床・玩具への入力を確認
+5. 実GPUで目標60fps、最低30fpsを確認
+6. 実機情報、計測方法、スクリーンショットを記録してからv0.8へ進む
 
 ## Not complete
 
-- Final Visual Bible
-- Final cat art
-- Character rig and frame animation
-- Real petting response
-- Food animation
-- Sleep animation
-- Audio
-- Native haptics and notifications
-- TestFlight
-- App Store build
+- Visual Bible
+- 最終猫・部屋アート
+- 本番リグ
+- 呼吸、瞬き、耳、視線、しっぽ、姿勢遷移、歩行
+- 撫でている最中の身体反応
+- 食事・睡眠アニメーション
+- 音、ネイティブ触覚、通知
+- TestFlight、App Store版
