@@ -2,33 +2,109 @@
 <html lang="ja">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
   <meta name="theme-color" content="#171411">
   <meta name="robots" content="noindex,nofollow,noarchive">
-  <title>Tail Room — Creator Preview 0.6</title>
+  <title>Tail Room — Creator Preview 0.7</title>
   <link rel="stylesheet" href="./src/styles.css">
 </head>
 <body>
-<div id="app" class="app" data-phase="day">
-  <section id="intro" class="screen intro-screen">
-    <div class="scene scene-intro" aria-hidden="true"></div>
-    <div class="shade shade-intro" aria-hidden="true"></div>
-    <header class="intro-copy"><span class="brand">TAIL ROOM</span><h1>この子と、<br>暮らしはじめる。</h1><p>まずは名前より先に、そっと触れてみてください。</p></header>
-    <button id="introCat" class="cat-zone intro-cat-zone" type="button" aria-label="子猫に触れる"></button>
-    <div id="touchGuide" class="touch-guide"><span></span><b>指でゆっくり撫でる</b></div>
-    <section id="namePanel" class="sheet name-sheet" hidden><p class="kicker">この子を呼ぶ名前</p><h2>名前をつける</h2><input id="petNameInput" maxlength="10" value="こむぎ" autocomplete="off" aria-label="ペットの名前"><button id="startLife" class="primary" type="button">暮らしを始める</button><p>生活時間は、暮らし始めてから変更できます。</p></section>
-  </section>
-  <section id="home" class="screen home-screen hidden">
-    <div id="homeScene" class="scene scene-home" aria-hidden="true"></div><div class="shade shade-home" aria-hidden="true"></div>
-    <header id="homeHeader" class="hud-top"><div><span id="dayLabel">一緒に 1日目</span><strong id="petNameTitle">こむぎ</strong></div><button id="memoryButton" type="button" aria-label="思い出を見る">記</button></header>
-    <button id="catZone" class="cat-zone home-cat-zone" type="button" aria-label="こむぎを撫でる"></button><button id="windowZone" class="hotspot window-zone" type="button" aria-label="窓を見る"></button><button id="bedZone" class="hotspot bed-zone" type="button" aria-label="寝床を見る"></button><button id="bowlZone" class="hotspot bowl-zone" type="button" aria-label="ごはんを置く"></button><button id="toyZone" class="hotspot toy-zone" type="button" aria-label="おもちゃで遊ぶ"></button>
-    <div id="touchBloom" class="touch-bloom" hidden></div><div id="microMessage" class="micro-message" hidden></div><div id="firstHint" class="first-hint">猫や部屋の物へ直接触れてください。</div>
-  </section>
-  <div id="backdrop" class="backdrop" hidden></div>
-  <section id="foodSheet" class="sheet bottom-sheet" hidden><div class="sheet-head"><div><p class="kicker">食器へ置く</p><h2>今のごはん</h2></div><button data-close type="button">×</button></div><div class="food-list"><button data-food="daily" type="button"><strong>いつものごはん</strong><small>朝と夜の基本</small></button><button data-food="special" type="button"><strong>香りの強いごはん</strong><small>少し特別な日</small></button><button data-food="treat" type="button"><strong>ひとくちだけ</strong><small>主食の代わりにはしない</small></button></div></section>
-  <section id="memorySheet" class="sheet bottom-sheet" hidden><div class="sheet-head"><div><p class="kicker">MEMORY</p><h2>一緒に過ごした記録</h2></div><button data-close type="button">×</button></div><div id="memoryList" class="memory-list"></div></section>
-  <section id="creatorSheet" class="sheet bottom-sheet" hidden><div class="sheet-head"><div><p class="kicker">CREATOR</p><h2>検証メニュー</h2></div><button data-close type="button">×</button></div><div class="creator-meta"><span>0.6.0</span><span id="debugTime">--:--</span><span id="debugState">保存 正常</span></div><div class="creator-grid"><button data-time="3600000" type="button">+1時間</button><button data-time="21600000" type="button">+6時間</button><button data-time="86400000" type="button">+1日</button><button data-time="2592000000" type="button">+30日</button><button data-debug="hungry" type="button">空腹</button><button data-debug="sleep" type="button">就寝</button><button data-debug="reset-time" type="button">実時間</button><button data-debug="reset" type="button">最初から</button></div><details><summary>生活時間</summary><div class="routine-grid"><label>朝食<input id="settingsBreakfast" type="time"></label><label>夕食<input id="settingsDinner" type="time"></label><label>起床<input id="settingsWake" type="time"></label><label>就寝<input id="settingsBedtime" type="time"></label></div><button id="saveRoutine" class="secondary" type="button">変更を保存</button></details></section>
-</div>
-<script type="module" src="./src/app.js"></script>
+  <main id="app" class="app-shell" data-mode="boot" data-phase="day">
+    <div id="game" class="game-host" role="application" aria-label="Tail Room ゲーム画面"></div>
+
+    <header id="introCopy" class="intro-copy" hidden>
+      <span class="brand">TAIL ROOM</span>
+      <h1>この子と、<br>暮らしはじめる。</h1>
+      <p>画面の中の子猫を、指でゆっくり撫でてみてください。</p>
+    </header>
+
+    <div id="touchGuide" class="touch-guide" hidden aria-hidden="true">
+      <span></span><b>子猫をゆっくり撫でる</b>
+    </div>
+
+    <header id="hud" class="hud" hidden>
+      <div class="hud-copy">
+        <span id="dayLabel">一緒に 1日目</span>
+        <strong id="petNameTitle">こむぎ</strong>
+      </div>
+      <div class="hud-actions">
+        <button id="memoryButton" class="round-control" type="button" aria-label="思い出を見る">記</button>
+        <button id="creatorButton" class="round-control" type="button" aria-label="制作者メニューを開く">•••</button>
+      </div>
+    </header>
+
+    <p id="worldHint" class="world-hint" hidden>猫や部屋の物へ直接触れてください。</p>
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+    <div id="backdrop" class="backdrop" hidden></div>
+
+    <section id="namePanel" class="sheet name-sheet" aria-labelledby="nameTitle" hidden>
+      <p class="kicker">FIRST MEETING</p>
+      <h2 id="nameTitle">この子を呼ぶ名前</h2>
+      <label class="field-label" for="petNameInput">名前</label>
+      <input id="petNameInput" maxlength="10" value="こむぎ" autocomplete="off" enterkeyhint="done">
+      <button id="startLife" class="primary" type="button">この子との暮らしを始める</button>
+      <p class="sheet-note">生活時間は、暮らし始めてから制作者メニューで変更できます。</p>
+    </section>
+
+    <section id="foodSheet" class="sheet bottom-sheet" aria-labelledby="foodTitle" hidden>
+      <div class="sheet-head">
+        <div><p class="kicker">食器へ置く</p><h2 id="foodTitle">今のごはん</h2></div>
+        <button class="close-button" data-close type="button" aria-label="閉じる">×</button>
+      </div>
+      <div class="choice-list">
+        <button data-food="daily" type="button"><strong>いつものごはん</strong><small>朝と夜の基本</small></button>
+        <button data-food="special" type="button"><strong>香りの強いごはん</strong><small>少し特別な日</small></button>
+        <button data-food="treat" type="button"><strong>ひとくちだけ</strong><small>主食の代わりにはしない</small></button>
+      </div>
+    </section>
+
+    <section id="memorySheet" class="sheet bottom-sheet" aria-labelledby="memoryTitle" hidden>
+      <div class="sheet-head">
+        <div><p class="kicker">MEMORY</p><h2 id="memoryTitle">一緒に過ごした記録</h2></div>
+        <button class="close-button" data-close type="button" aria-label="閉じる">×</button>
+      </div>
+      <div id="memoryList" class="memory-list"></div>
+    </section>
+
+    <section id="creatorSheet" class="sheet bottom-sheet" aria-labelledby="creatorTitle" hidden>
+      <div class="sheet-head">
+        <div><p class="kicker">CREATOR PREVIEW</p><h2 id="creatorTitle">検証メニュー</h2></div>
+        <button class="close-button" data-close type="button" aria-label="閉じる">×</button>
+      </div>
+      <div class="creator-meta">
+        <span>v0.7.0</span><span>Phaser 4.2.1</span><span>WebGL</span>
+        <span id="debugTime">--:--</span><span id="debugState">保存 正常</span>
+      </div>
+      <div class="creator-grid">
+        <button data-time="3600000" type="button">+1時間</button>
+        <button data-time="21600000" type="button">+6時間</button>
+        <button data-time="86400000" type="button">+1日</button>
+        <button data-time="2592000000" type="button">+30日</button>
+        <button data-debug="hungry" type="button">空腹</button>
+        <button data-debug="sleep" type="button">就寝</button>
+        <button data-debug="reset-time" type="button">実時間</button>
+        <button id="toggleDebugScene" type="button">描画情報</button>
+      </div>
+      <details>
+        <summary>生活時間</summary>
+        <div class="routine-grid">
+          <label>朝食<input id="settingsBreakfast" type="time"></label>
+          <label>夕食<input id="settingsDinner" type="time"></label>
+          <label>起床<input id="settingsWake" type="time"></label>
+          <label>就寝<input id="settingsBedtime" type="time"></label>
+        </div>
+        <button id="saveRoutine" class="secondary" type="button">変更を保存</button>
+      </details>
+      <button id="resetPreview" class="danger-quiet" type="button">確認データを削除して最初から</button>
+    </section>
+
+    <section id="runtimeError" class="runtime-error" role="alert" hidden>
+      <p class="kicker">WEBGL REQUIRED</p>
+      <h2>この端末では描画を開始できません</h2>
+      <p>Tail Room v0.7はWebGL専用です。Canvas版へ自動で切り替えず、描画差異を明示的に検出します。</p>
+    </section>
+  </main>
+  <script type="module" src="./src/main.js"></script>
 </body>
 </html>

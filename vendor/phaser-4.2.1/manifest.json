@@ -1,0 +1,12 @@
+{
+  "name": "phaser",
+  "version": "4.2.1",
+  "release": "Giedi",
+  "releasedAt": "2026-07-09",
+  "source": "https://github.com/phaserjs/phaser/releases/tag/v4.2.1",
+  "sourceCommit": "41be1e462bc600064e498cba370bfa8c5c055a22",
+  "entry": "phaser.esm.min.js",
+  "sha256": "f4c5fd140d118c10fa9090641a03c17303bab9bfdc28e0626296777db1bb1bde",
+  "license": "MIT",
+  "vendoringReason": "Creator Preview must build and run without CDN or runtime repository fetches."
+}

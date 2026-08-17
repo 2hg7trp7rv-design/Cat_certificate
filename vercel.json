@@ -1,1 +1,26 @@
-{"$schema":"https://openapi.vercel.sh/vercel.json","framework":null,"buildCommand":"npm run build","outputDirectory":"dist","cleanUrls":true,"trailingSlash":false,"headers":[{"source":"/(.*)","headers":[{"key":"Cache-Control","value":"no-store, max-age=0"},{"key":"X-Robots-Tag","value":"noindex, nofollow, noarchive"},{"key":"X-Content-Type-Options","value":"nosniff"},{"key":"Referrer-Policy","value":"no-referrer"},{"key":"Permissions-Policy","value":"camera=(), microphone=(), geolocation=()"}]}],"rewrites":[{"source":"/((?!src/|build-meta\\.json|robots\\.txt|.*\\.(?:css|js|json|txt)$).*)","destination":"/index.html"}]}
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "cleanUrls": true,
+  "trailingSlash": false,
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-store, max-age=0" },
+        { "key": "X-Robots-Tag", "value": "noindex, nofollow, noarchive" },
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "Referrer-Policy", "value": "no-referrer" },
+        { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=()" }
+      ]
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/((?!src/|vendor/|assets/|build-meta\\.json|robots\\.txt|.*\\.(?:css|js|json|txt|map|png|webp|avif|jpg|jpeg|gif|svg|woff|woff2|mp3|m4a|ogg)$).*)",
+      "destination": "/index.html"
+    }
+  ]
+}
