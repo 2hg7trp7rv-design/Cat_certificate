@@ -44,8 +44,9 @@
 - リポジトリは改名済み。今後は`Cat_room`を使用する
 - 使用ブランチ: `main`
 - ユーザーの明示許可なしに別リポジトリや別の公開ブランチへ移さない
-- 最新確認コミット: `738a3c3de011a6586987809947da48d4c43deee5`
-- 最新GitHub Actions Quality Gate: success
+- v0.6実装基準コミット: `738a3c3de011a6586987809947da48d4c43deee5`
+- Quality Gateはv0.6実装および本引き継ぎ反映時点でsuccess
+- Work開始時には必ずmainの最新HEADとCIを再取得する
 
 ### Vercel
 
@@ -53,9 +54,9 @@
 - Vercel project id: `prj_x77pFkTy2D8nBYq0QKDZZtV59Bz3`
 - 現在の制作者確認URL: `https://cat-certificate.vercel.app`
 - ドメイン名は旧名称を維持しているが、現在のプロジェクトは`cats-room`
-- 最新確認デプロイ: `dpl_vv3dtNEbvcKrQq5YYK1kEnQGLpuZ`
-- 最新確認状態: READY / HTTP 200
+- 本引き継ぎ時点でURLはREADY / HTTP 200
 - `https://cat-certificate-v06-smoke.vercel.app`は旧検証用。今後の正本URLとして使わない
+- デプロイIDはコミットごとに変わるため、Work開始時に最新値をVercelから取得する
 
 ### 重要
 
