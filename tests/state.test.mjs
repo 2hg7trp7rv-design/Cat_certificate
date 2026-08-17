@@ -8,6 +8,7 @@ import NeedSystem from '../src/game/systems/NeedSystem.js'
 import OfflineSimulation from '../src/game/systems/OfflineSimulation.js'
 import RelationshipSystem from '../src/game/systems/RelationshipSystem.js'
 import TimeSystem from '../src/game/systems/TimeSystem.js'
+import GameStateStore from '../src/state/GameStateStore.js'
 import {
   APP_VERSION,
   DAY,
@@ -196,4 +197,25 @@ test('v0.7 system facades preserve v6 state semantics', () => {
   assert.equal(resumed.version, 6)
   assert.ok(resumed.fullness < state.fullness)
   assert.equal(behaviors.choose(resumed, actual + HOUR).location, 'center')
+})
+
+test('room QA state is fresh and independent of saved preview data', () => {
+  const now = at(2026, 8, 15, 10)
+  const saved = {
+    ...beginLife(createInitialState(now), { petName: '残留データ' }, now),
+    debug: { timeOffsetMs: DAY, forceHungry: true, forceSleep: true },
+  }
+  let writes = 0
+  const storage = {
+    getItem: () => serializeState(saved),
+    setItem: () => { writes += 1 },
+  }
+  const store = new GameStateStore({ storage, now: () => now, qaScene: 'room' })
+
+  assert.equal(store.getState().petName, 'こむぎ')
+  assert.equal(store.getState().debug.forceHungry, false)
+  assert.equal(store.getState().debug.forceSleep, false)
+  assert.equal(store.ephemeral, true)
+  store.play()
+  assert.equal(writes, 0)
 })

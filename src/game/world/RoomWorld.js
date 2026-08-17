@@ -81,8 +81,8 @@ export class RoomWorld {
     this.lampGlow.setAlpha(phaseLight.lamp)
     this.nightWash.setAlpha(phaseLight.night)
     this.cat.setGrowthScale(snapshot.growth.scale)
-    this.cat.setSleeping(sleeping)
     this.cat.setNightReadable(phase === 'night')
+    this.cat.setSleeping(sleeping)
     this.bowl.setAttention(snapshot.needs.hungry)
     this.bed.setAttention(sleeping)
   }

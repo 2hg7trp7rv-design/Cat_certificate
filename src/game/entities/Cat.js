@@ -1,4 +1,5 @@
 import Phaser from '../phaser.js'
+import { alignCenteredHitArea } from '../input/HitArea.js'
 
 const CAT_HIT_POLYGON = Object.freeze([
   -112, 80, -108, 8, -88, -72, -62, -126, -8, -138,
@@ -38,7 +39,11 @@ export class Cat extends Phaser.GameObjects.Container {
     scene.add.existing(this)
     this.setScale(scale)
     this.setSize(240, 275)
-    const hitArea = new Phaser.Geom.Polygon(CAT_HIT_POLYGON)
+    const hitArea = alignCenteredHitArea(
+      new Phaser.Geom.Polygon(CAT_HIT_POLYGON),
+      this.displayOriginX,
+      this.displayOriginY,
+    )
     this.setInteractive(hitArea, Phaser.Geom.Polygon.Contains)
     this.inputShape = hitArea
   }

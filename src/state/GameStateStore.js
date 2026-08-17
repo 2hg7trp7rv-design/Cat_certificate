@@ -39,8 +39,9 @@ export class GameStateStore {
     if (qaScene === 'first-meeting') {
       this.state = parseState(null, this.now())
     }
-    if (qaScene === 'room' && !this.state.onboarded) {
-      this.state = beginLife(this.state, { petName: 'こむぎ', routine: DEFAULT_ROUTINE }, this.now())
+    if (qaScene === 'room') {
+      const freshQaState = parseState(null, this.now())
+      this.state = beginLife(freshQaState, { petName: 'こむぎ', routine: DEFAULT_ROUTINE }, this.now())
     }
   }
 

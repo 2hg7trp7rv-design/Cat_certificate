@@ -25,9 +25,9 @@ function applyQaSize(size) {
 function supportsWebGL() {
   try {
     const canvas = document.createElement('canvas')
-    const context = canvas.getContext('webgl2')
-      || canvas.getContext('webgl')
+    const context = canvas.getContext('webgl')
       || canvas.getContext('experimental-webgl')
+    context?.getExtension('WEBGL_lose_context')?.loseContext()
     return Boolean(context)
   } catch {
     return false
@@ -58,23 +58,39 @@ if (!supportsWebGL()) {
   ui.showRuntimeError('この端末ではWebGLの初期化に失敗しました。描画差異を隠すCanvasフォールバックは行いません。')
   window.__TAIL_ROOM_QA__.renderer = 'unavailable'
 } else {
-  const game = new Phaser.Game(createGameConfig({
-    store,
-    ui,
-    onReady(instance) {
-      ui.bindGame(instance)
-      const canvas = instance.canvas
-      canvas?.addEventListener('webglcontextlost', event => {
-        event.preventDefault()
-        window.__TAIL_ROOM_QA__.contextLost = true
-      })
-      canvas?.addEventListener('webglcontextrestored', () => {
-        window.__TAIL_ROOM_QA__.contextLost = false
-      })
-    },
-  }))
+  const failBoot = error => {
+    window.__TAIL_ROOM_QA__.renderer = 'unavailable'
+    window.__TAIL_ROOM_QA__.bootError = String(error?.message || error || 'WebGL boot timed out')
+    ui.showRuntimeError('WebGL描画の初期化を完了できませんでした。Canvas版へは切り替えません。')
+  }
+  const bootWatchdog = setTimeout(() => {
+    if (!window.__TAIL_ROOM_READY__) failBoot('WebGL boot timed out')
+  }, 8000)
 
-  ui.bindGame(game)
-  if (options.debug) game.scene.launch('DebugScene')
-  setInterval(() => store.refresh(), 60_000)
+  try {
+    const game = new Phaser.Game(createGameConfig({
+      store,
+      ui,
+      onReady(instance) {
+        clearTimeout(bootWatchdog)
+        ui.bindGame(instance)
+        const canvas = instance.canvas
+        canvas?.addEventListener('webglcontextlost', event => {
+          event.preventDefault()
+          window.__TAIL_ROOM_QA__.contextLost = true
+        })
+        canvas?.addEventListener('webglcontextrestored', () => {
+          window.__TAIL_ROOM_QA__.contextLost = false
+        })
+        if (options.debug) instance.scene.run('DebugScene')
+      },
+    }))
+
+    ui.bindGame(game)
+    setInterval(() => store.refresh(), 60_000)
+  } catch (error) {
+    clearTimeout(bootWatchdog)
+    console.error('Tail Room WebGL boot failed', error)
+    failBoot(error)
+  }
 }

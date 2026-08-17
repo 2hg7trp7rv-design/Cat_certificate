@@ -5,9 +5,13 @@ export class DebugScene extends Phaser.Scene {
     super('DebugScene')
     this.samples = []
     this.lastRenderAt = 0
+    this.lastSampleAt = 0
+    this.warmupUntil = 0
   }
 
   create() {
+    this.samples.length = 0
+    this.lastRenderAt = 0
     this.panel = this.add.rectangle(10, 96, 373, 110, 0x15110e, 0.78).setOrigin(0)
     this.label = this.add.text(22, 108, '', {
       color: '#fff7ec',
@@ -17,32 +21,48 @@ export class DebugScene extends Phaser.Scene {
     })
     this.hitGraphics = this.add.graphics()
     this.scene.bringToTop()
+    this.lastSampleAt = performance.now()
+    this.warmupUntil = this.lastSampleAt + 1000
   }
 
   update(time) {
-    const fps = Number(this.game.loop.actualFps || (1000 / Math.max(1, this.game.loop.delta)))
-    if (Number.isFinite(fps)) {
-      this.samples.push(fps)
+    const sampledAt = performance.now()
+    const rawDelta = sampledAt - this.lastSampleAt
+    this.lastSampleAt = sampledAt
+    if (rawDelta > 250) {
+      this.samples.length = 0
+      this.warmupUntil = sampledAt + 1000
+    } else if (sampledAt >= this.warmupUntil && Number.isFinite(rawDelta) && rawDelta > 0) {
+      this.samples.push(rawDelta)
       if (this.samples.length > 600) this.samples.shift()
     }
     if (time - this.lastRenderAt < 250) return
     this.lastRenderAt = time
-    const average = this.samples.length ? this.samples.reduce((sum, value) => sum + value, 0) / this.samples.length : 0
-    const minimum = this.samples.length ? Math.min(...this.samples) : 0
+    const latestDelta = this.samples.at(-1) || 0
+    const averageDelta = this.samples.length ? this.samples.reduce((sum, value) => sum + value, 0) / this.samples.length : 0
+    const maximumDelta = this.samples.length ? Math.max(...this.samples) : 0
+    const fps = latestDelta ? 1000 / latestDelta : 0
+    const average = averageDelta ? 1000 / averageDelta : 0
+    const minimum = maximumDelta ? 1000 / maximumDelta : 0
     const room = this.scene.get('RoomScene')
-    const size = `${this.scale.gameSize.width}×${this.scale.gameSize.height}`
+    const canvas = this.game.canvas
+    const internalSize = `${this.scale.gameSize.width}×${this.scale.gameSize.height}`
+    const displaySize = `${Math.round(canvas?.clientWidth || 0)}×${Math.round(canvas?.clientHeight || 0)}`
     const layerNames = room?.world?.layerNames || window.__TAIL_ROOM_QA__.layers || []
     this.label.setText([
       `Tail Room v0.7.0 / Phaser 4.2.1 / WebGL`,
-      `Canvas ${size}  FPS ${fps.toFixed(1)}  min ${minimum.toFixed(1)}  avg ${average.toFixed(1)}`,
+      `Canvas ${internalSize} → ${displaySize}  FPS ${fps.toFixed(1)}  min ${minimum.toFixed(1)}  avg ${average.toFixed(1)}`,
       `Layers ${layerNames.join(' · ')}`,
       `Context ${window.__TAIL_ROOM_QA__.contextLost ? 'LOST' : 'active'}  Art temporary raster parts`,
     ])
+    window.__TAIL_ROOM_QA__.displaySize = displaySize
     window.__TAIL_ROOM_QA__.fps = {
       current: Number(fps.toFixed(2)),
       minimum: Number(minimum.toFixed(2)),
       average: Number(average.toFixed(2)),
       samples: this.samples.length,
+      warmed: sampledAt >= this.warmupUntil,
+      maximumFrameMs: Number(maximumDelta.toFixed(2)),
     }
     this.drawInputShapes(room)
   }

@@ -15,10 +15,11 @@ const toLocal = (cat, pointer) => ({
 })
 
 export class PettingInput {
-  constructor(cat, { onComplete, onMove } = {}) {
+  constructor(cat, { onComplete, onMove, minimumDistance = 18 } = {}) {
     this.cat = cat
     this.onComplete = onComplete
     this.onMove = onMove
+    this.minimumDistance = minimumDistance
     this.active = null
     this.handlers = {
       down: pointer => this.start(pointer),
@@ -33,6 +34,7 @@ export class PettingInput {
   }
 
   start(pointer) {
+    if (this.active) return
     const local = toLocal(this.cat, pointer)
     this.active = {
       pointerId: pointer.id,
@@ -56,8 +58,16 @@ export class PettingInput {
 
   finish(pointer) {
     if (!this.active || this.active.pointerId !== pointer.id) return
+    this.active.distance += Math.hypot(
+      pointer.worldX - this.active.lastX,
+      pointer.worldY - this.active.lastY,
+    )
     const duration = performance.now() - this.active.startedAt
     const local = toLocal(this.cat, pointer)
+    if (this.active.distance < this.minimumDistance) {
+      this.active = null
+      return
+    }
     const result = {
       zone: classifyPettingZone(local.x, local.y),
       pace: classifyPettingPace(this.active.distance, duration),

@@ -1,4 +1,5 @@
 import Phaser from '../phaser.js'
+import { alignCenteredHitArea } from '../input/HitArea.js'
 
 const containsFor = shape => {
   if (shape instanceof Phaser.Geom.Ellipse) return Phaser.Geom.Ellipse.Contains
@@ -19,7 +20,8 @@ export class InteractiveObject extends Phaser.GameObjects.Container {
     const width = this.visual.displayWidth
     const height = this.visual.displayHeight
     this.setSize(width, height)
-    const shape = hitArea || new Phaser.Geom.Rectangle(-width / 2, -height / 2, width, height)
+    const centeredShape = hitArea || new Phaser.Geom.Rectangle(-width / 2, -height / 2, width, height)
+    const shape = alignCenteredHitArea(centeredShape, this.displayOriginX, this.displayOriginY)
     this.setInteractive(shape, containsFor(shape))
     this.inputShape = shape
 

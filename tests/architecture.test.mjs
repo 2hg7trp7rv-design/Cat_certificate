@@ -151,6 +151,9 @@ test('Phaser is explicitly configured for WebGL', async () => {
   const entry = await readText(resolve(ROOT, 'src/main.js'))
   assert.match(source, /\btype\s*:\s*Phaser\.WEBGL\b/, 'Phaser config must use `type: Phaser.WEBGL`')
   assert.doesNotMatch(source, /\btype\s*:\s*Phaser\.(?:AUTO|CANVAS|HEADLESS)\b/, 'AUTO/CANVAS/HEADLESS renderer fallback is not accepted for v0.7')
+  assert.match(entry, /getContext\(['"]webgl['"]\)/, 'preflight must probe the WebGL1 context Phaser 4.2.1 requests')
+  assert.doesNotMatch(entry, /getContext\(['"]webgl2['"]\)/, 'a WebGL2-only preflight can disagree with the Phaser renderer')
+  assert.match(entry, /WEBGL_lose_context/, 'the preflight context must be released before Phaser allocates its renderer')
   assert.doesNotMatch(
     `${entry}\n${source}`,
     /failIfMajorPerformanceCaveat\s*:\s*true/,
@@ -176,6 +179,31 @@ test('room, furniture, cat, light, and shadow are named Phaser layers', async ()
     layerCreations.length >= REQUIRED_LAYERS.length || factoryCreatesLayers,
     `RoomScene must create distinct Phaser layers (${REQUIRED_LAYERS.join(', ')})`,
   )
+})
+
+test('Container hit areas account for Phaser display origins', async () => {
+  const cat = await readText(resolve(ROOT, 'src/game/entities/Cat.js'))
+  const interactive = await readText(resolve(ROOT, 'src/game/entities/InteractiveObject.js'))
+  const combined = `${cat}\n${interactive}`
+
+  assert.match(combined, /alignCenteredHitArea/)
+  assert.equal((combined.match(/this\.displayOriginX/g) || []).length >= 2, true)
+  assert.equal((combined.match(/this\.displayOriginY/g) || []).length >= 2, true)
+})
+
+test('debug scene uses the Phaser 4 SceneManager API', async () => {
+  const entry = await readText(resolve(ROOT, 'src/main.js'))
+  const ui = await readText(resolve(ROOT, 'src/ui/UIController.js'))
+  const combined = `${entry}\n${ui}`
+
+  assert.doesNotMatch(combined, /game\.scene\.launch\s*\(/)
+  assert.match(combined, /\.scene\.run\(['"]DebugScene['"]\)/)
+})
+
+test('passive room guidance cannot block Canvas input', async () => {
+  const styles = await readText(resolve(ROOT, 'src/styles.css'))
+  const rule = styles.match(/\.world-hint,\s*\.toast\s*\{[\s\S]*?\}/)?.[0] || ''
+  assert.match(rule, /pointer-events\s*:\s*none/)
 })
 
 test('the pinned Phaser 4 vendor artifact has a verified SHA-256 manifest', async () => {

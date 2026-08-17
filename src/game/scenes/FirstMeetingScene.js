@@ -17,8 +17,12 @@ export class FirstMeetingScene extends Phaser.Scene {
     this.petting = new PettingInput(this.world.cat, {
       onComplete: result => {
         if (this.completed) return
+        if (result.pace !== 'slow') {
+          this.world.cat.acknowledgePetting(false)
+          return
+        }
         this.completed = true
-        this.world.cat.acknowledgePetting(result.pace === 'slow')
+        this.world.cat.acknowledgePetting(true)
         ui.showNamePanel()
       },
     })

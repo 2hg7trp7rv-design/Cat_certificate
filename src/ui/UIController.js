@@ -102,7 +102,7 @@ export class UIController {
       if (!this.game) return
       const debug = this.game.scene.getScene('DebugScene')
       if (debug?.scene.isActive()) debug.scene.stop()
-      else this.game.scene.launch('DebugScene')
+      else this.game.scene.run('DebugScene')
       this.close()
     })
 
