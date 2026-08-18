@@ -329,14 +329,46 @@ const RUNTIME_SNAPSHOT = `
 `
 
 async function waitForScene(scene) {
-  return waitFor(`${scene} WebGL readiness`, () => driver.execute(`
-    return Boolean(
-      window.__TAIL_ROOM_READY__ === true &&
-      window.__TAIL_ROOM_QA__?.ready === true &&
-      window.__TAIL_ROOM_QA__?.renderer === 'webgl' &&
-      window.__TAIL_ROOM_QA__?.scene === ${JSON.stringify(scene)}
-    );
-  `), { timeoutMs: 30_000 })
+  try {
+    return await waitFor(`${scene} WebGL readiness`, () => driver.execute(`
+      return Boolean(
+        window.__TAIL_ROOM_READY__ === true &&
+        window.__TAIL_ROOM_QA__?.ready === true &&
+        window.__TAIL_ROOM_QA__?.renderer === 'webgl' &&
+        window.__TAIL_ROOM_QA__?.scene === ${JSON.stringify(scene)}
+      );
+    `), { timeoutMs: 30_000 })
+  } catch (error) {
+    const runtime = await driver.execute(`
+      const qa = window.__TAIL_ROOM_QA__ || {};
+      return {
+        documentReadyState: document.readyState,
+        appMode: document.querySelector('#app')?.dataset.mode || null,
+        canvasCount: document.querySelectorAll('#game canvas').length,
+        ready: window.__TAIL_ROOM_READY__ === true,
+        qaReady: qa.ready === true,
+        renderer: qa.renderer || null,
+        scene: qa.scene || null,
+        bootError: qa.bootError || null,
+        contextLost: qa.contextLost === true,
+      };
+    `).catch(diagnosticError => ({ diagnosticError: diagnosticError.message }))
+    const browserLogs = await driver.browserLogs().catch(diagnosticError => ([{
+      level: 'DIAGNOSTIC_ERROR',
+      message: diagnosticError.message,
+    }]))
+    const diagnostics = {
+      runtime,
+      browserLogs: browserLogs.slice(-20).map(entry => ({
+        level: entry.level || null,
+        message: String(entry.message || '').slice(0, 2_000),
+        timestamp: entry.timestamp || null,
+      })),
+    }
+    const enriched = new Error(`${error.message} Scene diagnostics: ${JSON.stringify(diagnostics)}`, { cause: error })
+    enriched.sceneDiagnostics = diagnostics
+    throw enriched
+  }
 }
 
 async function warmedFpsDiagnostic() {
@@ -552,6 +584,7 @@ async function runRoomCase(size) {
   } catch (error) {
     result.status = 'failed'
     result.error = error.stack || String(error)
+    if (error.sceneDiagnostics) result.sceneDiagnostics = error.sceneDiagnostics
     try {
       result.failureScreenshot = await driver.savePageScreenshot(`room-${size}-failure.png`)
     } catch {
@@ -790,6 +823,7 @@ async function runInteractionCase() {
   } catch (error) {
     result.status = 'failed'
     result.error = error.stack || String(error)
+    if (error.sceneDiagnostics) result.sceneDiagnostics = error.sceneDiagnostics
     if (result.sleepSequence?.status === 'running') {
       result.sleepSequence.status = 'failed'
       result.sleepSequence.error = result.error
