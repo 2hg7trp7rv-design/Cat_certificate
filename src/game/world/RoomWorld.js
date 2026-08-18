@@ -126,10 +126,20 @@ export class RoomWorld {
       lampGlow: this.lampGlow,
       windowLight: this.windowLight,
     })
+    this.motionTrace = []
     this.behavior = new CatBehaviorController(this.cat, {
       anchors: ROOM_ANCHORS,
       onPosition: ({ x, y }) => this.catContactShadow.setPosition(x, y + 1),
       onStateChange: ({ action, state }) => {
+        const previous = this.motionTrace.at(-1)
+        if (previous?.action !== action || previous?.state !== state) {
+          this.motionTrace.push({
+            action: action ?? null,
+            state: state ?? null,
+            clock: Number(this.behavior?.clock ?? 0),
+          })
+          if (this.motionTrace.length > 64) this.motionTrace.shift()
+        }
         const carryingToy = /play$/.test(action ?? '') && state === 'play-catch'
         this.setToyCaught(carryingToy)
       },
@@ -230,6 +240,7 @@ export class RoomWorld {
         toy: Boolean(this.toy.visible),
       },
       behavior: this.behavior.getState(),
+      motionTrace: this.motionTrace.map(entry => ({ ...entry })),
     }
   }
 
@@ -237,6 +248,7 @@ export class RoomWorld {
     this.setToyCaught(false)
     this.behavior?.destroy()
     this.ambientMotion?.destroy()
+    this.motionTrace = []
     this.snapshot = null
   }
 }

@@ -781,6 +781,17 @@ async function runInteractionCase() {
       await sleep(100)
     }
     const expectedMotion = ['walk', 'play-notice', 'play-crouch', 'play-pounce', 'play-catch', 'play-recover']
+    const playMotionTrace = await driver.execute(`
+      return (window.__TAIL_ROOM_QA__?.room?.motionTrace || [])
+        .filter(entry => entry?.action === 'player-play' && entry?.state)
+        .map(entry => ({ state: entry.state, clock: entry.clock }));
+    `)
+    for (const entry of playMotionTrace) observedMotion.add(entry.state)
+    let traceCursor = -1
+    for (const state of expectedMotion) {
+      traceCursor = playMotionTrace.findIndex((entry, index) => index > traceCursor && entry.state === state)
+      assert.ok(traceCursor >= 0, `Toy motion trace omitted or reordered state: ${state}`)
+    }
     assert.deepEqual(
       expectedMotion.filter(state => !observedMotion.has(state)),
       [],
@@ -795,6 +806,7 @@ async function runInteractionCase() {
     )
     result.toySequence = {
       states: [...observedMotion],
+      motionTrace: playMotionTrace,
       screenshots: { pounce: pounceScreenshot, catch: catchScreenshot },
       roomToyRestored: true,
     }
