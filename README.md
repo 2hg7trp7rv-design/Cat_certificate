@@ -21,9 +21,9 @@
 - DOM UIはpaper cream、walnut、sage、deep tealを基調とする温かい不透明パネルへ刷新
 - 日本語UIは同梱した`Tail Room JP` 400／700を使用し、CIで両weightのloadを確認
 - 保存データは`version: 6`と`tail-room-state-v6`を維持
-- runtime／evidence SHA: `0358b05bd2888ef4afa7951d924e95ababda654f`
-- Quality Gate: [Run 52](https://github.com/2hg7trp7rv-design/Cat_room/actions/runs/32096447738) `completed / success`
-- Vercel: deployment `dpl_CB63B9ksMX3YQrF2LceQLpx1QSfv`、`READY / production`
+- runtime／evidence SHA: `26935545f03c11df63bc6ddc4a929ec9bab53ee3`
+- Quality Gate: [Run 54](https://github.com/2hg7trp7rv-design/Cat_room/actions/runs/32097369705) `completed / success`
+- Vercel: deployment `dpl_H2kVdQKouknE9S76azQ27vk9iKGx`、`READY / production`
 
 ## v0.8で作り直したこと
 
@@ -41,9 +41,9 @@
 
 ## 検証上の線引き
 
-v0.8は**実装＋CIソフトウェアWebGLゲート合格**です。SHA `0358b05bd2888ef4afa7951d924e95ababda654f`に対し、`npm run check`（41 JavaScript構文検査・47 tests）、GitHub Actions Quality Gate Run 52、320×667／393×852／430×932のWebGL smokeとPNGが合格しました。131 texturesはすべてnon-empty、6 layerの順序、横overflowなし、初回導線、食事、寝床、玩具、睡眠sequenceも確認済みです。
+v0.8は**実装＋CIソフトウェアWebGLゲート合格**です。SHA `26935545f03c11df63bc6ddc4a929ec9bab53ee3`に対し、`npm run check`（41 JavaScript構文検査・47 tests）、GitHub Actions Quality Gate Run 54、320×667／393×852／430×932のWebGL smokeとPNGが合格しました。131 texturesはすべてnon-empty、6 layerの順序、横overflowなし、初回導線、食事、寝床、玩具、睡眠sequenceも確認済みです。
 
-同じSHAのVercel deployment `dpl_CB63B9ksMX3YQrF2LceQLpx1QSfv`は`READY / production`で、正本URLはHTTP 200を返しました。詳細、artifact ID／digest、失敗履歴は[docs/V08_VALIDATION.md](docs/V08_VALIDATION.md)を参照してください。
+同じSHAのVercel deployment `dpl_H2kVdQKouknE9S76azQ27vk9iKGx`は`READY / production`で、正本URLはHTTP 200を返しました。詳細、artifact ID／digest、失敗履歴は[docs/V08_VALIDATION.md](docs/V08_VALIDATION.md)を参照してください。
 
 CIはChrome 151＋ANGLE SwiftShaderによるソフトウェアWebGLです。合格しても、実iPhone、iOS Safari、実GPUの性能を証明したことにはなりません。物理iPhoneでの初回導線、タッチ、夜間視認性、バックグラウンド復帰、目標60fps／最低30fpsは`NOT TESTED`です。
 

@@ -44,9 +44,9 @@
 - リポジトリは改名済み。今後は`Cat_room`を使用する
 - 使用ブランチ: `main`
 - ユーザーの明示許可なしに別リポジトリや別の公開ブランチへ移さない
-- v0.8 runtime／evidenceコミット: `0358b05bd2888ef4afa7951d924e95ababda654f`
-- v0.8 Quality Gate: [Run 52](https://github.com/2hg7trp7rv-design/Cat_room/actions/runs/32096447738)、job `95588640609`、`completed / success`
-- WebGL smoke artifact: ID `9310114629`、`tail-room-v0.8-webgl-smoke`、digest `sha256:072eab5dda7ab62a6f1f323442dc83f5ff7338dff287ee6b55e331fe08d7d153`
+- v0.8 runtime／evidenceコミット: `26935545f03c11df63bc6ddc4a929ec9bab53ee3`
+- v0.8 Quality Gate: [Run 54](https://github.com/2hg7trp7rv-design/Cat_room/actions/runs/32097369705)、job `95591222211`、`completed / success`
+- WebGL smoke artifact: ID `9310409064`、`tail-room-v0.8-webgl-smoke`、digest `sha256:684446e1ea24405c1600c2a2f698bb8dcf0db2702f3117b3f4233dc2de523b2a`
 - v0.7の旧検証SHAや旧runをv0.8合格の証拠に流用しない
 - Work開始時には必ずmainの最新HEADとCIを再取得する
 
@@ -56,7 +56,7 @@
 - Vercel project id: `prj_x77pFkTy2D8nBYq0QKDZZtV59Bz3`
 - 現在の制作者確認URL: `https://cat-certificate.vercel.app`
 - ドメイン名は旧名称を維持しているが、現在のプロジェクトは`cats-room`
-- v0.8 deployment ID: `dpl_CB63B9ksMX3YQrF2LceQLpx1QSfv`
+- v0.8 deployment ID: `dpl_H2kVdQKouknE9S76azQ27vk9iKGx`
 - deploymentはv0.8 runtime／evidence SHAと一致し、`READY / production`、`aliasError: null`
 - 正本URLはHTTP 200、titleは`Tail Room — Creator Preview 0.8`
 - `/assets/fonts/noto-sans-jp-400.ttf`はHTTP 200、`content-type: font/ttf`
@@ -74,7 +74,7 @@
 
 現行はCreator Preview 0.8.0。
 
-v0.8では、v0.7のPhaser 4.2.1 WebGL、状態エンジン、Canvas内入力を維持し、世界を温かいレトロ・ピクセルアートへ作り直した。猫のmotionと自主行動、代表的な睡眠・一人遊び、温かいDOM UIも実装済み。runtime／evidence SHAに対するQuality Gate Run 52とVercel productionを確認し、現在の判定は**実装＋CIソフトウェアWebGLゲート合格**である。物理iPhone、iOS Safari、実GPUのhardware gateは未完。
+v0.8では、v0.7のPhaser 4.2.1 WebGL、状態エンジン、Canvas内入力を維持し、世界を温かいレトロ・ピクセルアートへ作り直した。猫のmotionと自主行動、代表的な睡眠・一人遊び、温かいDOM UIも実装済み。runtime／evidence SHAに対するQuality Gate Run 54とVercel productionを確認し、現在の判定は**実装＋CIソフトウェアWebGLゲート合格**である。物理iPhone、iOS Safari、実GPUのhardware gateは未完。
 
 ### v0.8でソース実装済み
 
@@ -119,7 +119,7 @@ v0.8では、v0.7のPhaser 4.2.1 WebGL、状態エンジン、Canvas内入力を
 
 ### 未完成・未検証
 
-- Quality Gate Run 52とVercel productionのsoftware gateは合格済み。ただし物理iPhone、iOS Safari、実GPU性能は未検証
+- Quality Gate Run 54とVercel productionのsoftware gateは合格済み。ただし物理iPhone、iOS Safari、実GPU性能は未検証
 - 現在の131テクスチャはVisual Bible準拠の実装素材だが、最終商品アートの描き込みと毛柄展開は未完成
 - 撫でている最中の部位別身体反応、拒否、音、触覚は未実装
 - 食事の接近、匂い、咀嚼、量減少は未実装
@@ -486,12 +486,12 @@ Webで以下の3体験が成立した時点で、完全なWeb完成を待たず�
 
 ### 最初にv0.8 hardware gateを閉じる
 
-v0.8のsoftware release evidenceはSHA `0358b05bd2888ef4afa7951d924e95ababda654f`で閉じた。次のWorkはmainの最新HEADとCIを再確認した後、新機能へ進む前に物理iPhoneゲートを実施する。Run 52のartifactとVercel結果を別SHAの証拠へ流用しない。
+v0.8のsoftware release evidenceはSHA `26935545f03c11df63bc6ddc4a929ec9bab53ee3`で閉じた。次のWorkはmainの最新HEADとCIを再確認した後、新機能へ進む前に物理iPhoneゲートを実施する。Run 54のartifactとVercel結果を別SHAの証拠へ流用しない。
 
 ### v0.8 software evidence結果
 
 - `npm run check`: exit 0、41 JavaScript構文検査、47 tests pass
-- Quality Gate: Run 52、job `95588640609`、`completed / success`
+- Quality Gate: Run 54、job `95591222211`、`completed / success`
 - Browser: Chrome 151、ANGLE SwiftShader WebGL。実GPU性能の証拠ではない
 - 320×667、393×852、430×932: Canvas寸法一致、横overflowなし、PNG取得
 - texture: 131 created、131 non-empty、`temporary: false`
@@ -501,14 +501,15 @@ v0.8のsoftware release evidenceはSHA `0358b05bd2888ef4afa7951d924e95ababda654f
 - room: food sheet、bed touch feedback、玩具、睡眠を確認
 - 玩具: walk → notice → crouch → pounce → catch → recover → sit、roomの玩具を復元
 - 睡眠: walk → transition → curl。12秒deadline内に合格
-- Vercel: 同じSHAの`dpl_CB63B9ksMX3YQrF2LceQLpx1QSfv`が`READY / production`、正本URL HTTP 200
+- Vercel: 同じSHAの`dpl_H2kVdQKouknE9S76azQ27vk9iKGx`が`READY / production`、正本URL HTTP 200
 
 ### 失敗履歴
 
 - Run 48は静的checkに合格したが、Phaser 4のContainerで未対応の`setDisplayOrigin()`を呼んだためscene boot後にWebGL smokeが失敗した。呼び出しを削除し、Container entityでの再使用を禁止するtestを追加した
 - Run 49は日本語font setupがGitHub runnerのapt mirrorで停止し、最終的に`cancelled`。Run 50はtimeoutを追加してもsetupを完了できず`failure`となった。日本語fontをリポジトリへ同梱し、CIからapt依存を除去した
 - Run 51は未使用の400 weightを明示ロードせず、両weightの`loaded`を待ったためRoom 3ケースがtimeoutした。`document.fonts.load()`で400／700を先に読み、match数とstatusを検査するよう修正した
-- これらのrunはv0.8合格の証拠ではない。最終software gateはRun 52のみ
+- Run 53はスクリーンショット取得中に状態pollingが止まり、短い`play-recover`を見逃したfalse-negative。behaviorの`onStateChange`を使うbounded motion traceへ変更し、sequenceの全状態を取得するよう修正した
+- これらのrunはv0.8合格の証拠ではない。最終software gateはRun 54のみ
 
 ### v0.8 source条件の現在地
 
@@ -522,8 +523,8 @@ v0.8のsoftware release evidenceはSHA `0358b05bd2888ef4afa7951d924e95ababda654f
 | 一人遊びのnotice→catch | source OK | behavior planとmotion test |
 | 20〜65秒の自主行動 | source OK | deterministic scheduler |
 | warm DOM UI | source OK | `index.html`, `styles.css`, `UIController.js` |
-| 3サイズ、横scrollなし | CI OK | Run 52の3サイズがpass |
-| GitHub Actions | CI OK | Run 52 `completed / success` |
+| 3サイズ、横scrollなし | CI OK | Run 54の3サイズがpass |
+| GitHub Actions | CI OK | Run 54 `completed / success` |
 | Vercel READY / HTTP 200 | production OK | 同一SHAのdeploymentと正本URLを確認 |
 | 実iPhone | `NOT TESTED` | 実機確認済みと書かない |
 | 目標60fps、最低30fps | `NOT TESTED` | SwiftShader値は実GPU判定に使用不可 |
@@ -684,7 +685,7 @@ v0.9からv0.11の途中で開始。
 
 次のWorkは、v0.6／v0.7の仮素材へ戻ったり、pixel artへsmooth filterを掛けたり、WebGL失敗をCanvas fallbackで隠したりしてはいけない。
 
-v0.8のruntime SHA、Quality Gate Run 52、3サイズPNG、Vercel READY／HTTP 200は同じsoftware evidenceへ結び付け済み。次のWorkは物理iPhoneと実GPUのhardware gateを最初に閉じる。hardware gateを確認せず「実機検証済み」または「v0.8全面合格」と書かない。
+v0.8のruntime SHA、Quality Gate Run 54、3サイズPNG、Vercel READY／HTTP 200は同じsoftware evidenceへ結び付け済み。次のWorkは物理iPhoneと実GPUのhardware gateを最初に閉じる。hardware gateを確認せず「実機検証済み」または「v0.8全面合格」と書かない。
 
 その後は次の順序を守る。
 

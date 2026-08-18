@@ -23,7 +23,7 @@ DOM:
 - error、loading
 - accessibility用情報
 
-日本語本文をbitmapへ焼き込まない。見出し、数値、icon、borderだけにpixel感を持たせ、本文は同梱した`Tail Room JP`で読む。weight 400／700をTTFとして配信し、読み込み失敗時だけsystem Japanese fontへfallbackする。CI Run 52では両weightの`loaded`を確認済み。
+日本語本文をbitmapへ焼き込まない。見出し、数値、icon、borderだけにpixel感を持たせ、本文は同梱した`Tail Room JP`で読む。weight 400／700をTTFとして配信し、読み込み失敗時だけsystem Japanese fontへfallbackする。CI Run 54では両weightの`loaded`を確認済み。
 
 ## 2. 色とhierarchy
 

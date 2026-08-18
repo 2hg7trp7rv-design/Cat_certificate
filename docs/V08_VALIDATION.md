@@ -7,7 +7,7 @@
 
 現在の判定は**実装＋CIソフトウェアWebGLゲート合格、実機ゲート未完**。
 
-v0.8のピクセル描画、猫motion、behavior controller、温かいDOM UIはruntime／evidence SHA `0358b05bd2888ef4afa7951d924e95ababda654f`へ実装済み。`node scripts/check.mjs`はexit 0で41 JavaScript構文検査・47 tests、GitHub Actions Quality Gate Run 52は`completed / success`、同じSHAのVercel productionは`READY`となった。Run 52のartifactからreportとPNGも取得済み。
+v0.8のピクセル描画、猫motion、behavior controller、温かいDOM UIはruntime／evidence SHA `26935545f03c11df63bc6ddc4a929ec9bab53ee3`へ実装済み。`node scripts/check.mjs`はexit 0で41 JavaScript構文検査・47 tests、GitHub Actions Quality Gate Run 54は`completed / success`、同じSHAのVercel productionは`READY`となった。Run 54のartifactからreportとPNGも取得済み。
 
 物理iPhone、iOS Safari、hardware GPU性能は`NOT TESTED`。CIのChrome 151＋ANGLE SwiftShaderによるソフトウェアWebGL合格は、実機確認や実GPU fpsの代わりにはならない。
 
@@ -48,9 +48,9 @@ v0.8のピクセル描画、猫motion、behavior controller、温かいDOM UIは
 
 | Evidence | Result | Measured value |
 |---|---|---|
-| Runtime／evidence commit | 確定 | `0358b05bd2888ef4afa7951d924e95ababda654f` |
+| Runtime／evidence commit | 確定 | `26935545f03c11df63bc6ddc4a929ec9bab53ee3` |
 | Local／CI quality gate | 合格 | exit 0、41 JavaScript構文検査、47 tests pass |
-| Quality Gate | 合格 | [Run 52](https://github.com/2hg7trp7rv-design/Cat_room/actions/runs/32096447738)、job `95588640609`、`completed / success` |
+| Quality Gate | 合格 | [Run 54](https://github.com/2hg7trp7rv-design/Cat_room/actions/runs/32097369705)、job `95591222211`、`completed / success` |
 | WebGL renderer | 合格 | Chrome `151.0.7922.108`、WebGL 1、ANGLE SwiftShader、Canvas 1個、context lostなし、fallbackなし |
 | Pixel manifest | 合格 | 131 created、131 non-empty、0 reused、`temporary: false` |
 | Layer order | 合格 | room、shadow、furniture、cat、foreground、light |
@@ -58,13 +58,13 @@ v0.8のピクセル描画、猫motion、behavior controller、温かいDOM UIは
 | First meeting | 合格 | ゆっくり撫でる → 名前panel → 既定名`こむぎ` → RoomScene |
 | Room input | 合格 | cat、food sheet、bed touch feedback、toyをCanvas上の位置から操作 |
 | Toy sequence | 合格 | walk → notice → crouch → pounce → catch → recover → sit、完了後にroom toyを復元 |
-| Sleep sequence | 合格 | walk → curl transition → curl、12秒deadlineに対し2,949msでcurl到達 |
+| Sleep sequence | 合格 | walk → curl transition → curl、12秒deadlineに対し2,990msでcurl到達 |
 | 320×667 | 合格 | Canvas 320×667、横overflowなし、`room-320x667.png` |
 | 393×852 | 合格 | Canvas 393×852、横overflowなし、昼／夜PNGとinteraction PNG |
 | 430×932 | 合格 | Canvas 430×932、横overflowなし、`room-430x932.png` |
-| Smoke artifact | 取得済み | ID `9310114629`、`tail-room-v0.8-webgl-smoke` |
+| Smoke artifact | 取得済み | ID `9310409064`、`tail-room-v0.8-webgl-smoke` |
 
-Artifact digestは`sha256:072eab5dda7ab62a6f1f323442dc83f5ff7338dff287ee6b55e331fe08d7d153`、expires atは`2026-11-16T03:42:32Z`。ローカル出力先の契約名は`artifacts/v0.8/`である。
+Artifact digestは`sha256:684446e1ea24405c1600c2a2f698bb8dcf0db2702f3117b3f4233dc2de523b2a`、expires atは`2026-11-16T03:57:51Z`。ローカル出力先の契約名は`artifacts/v0.8/`である。
 
 3サイズ検査は、1200×1100のdesktop headless Chrome内で`#app`とCanvasを320×667、393×852、430×932へ固定し、要素単位のPNGを取得する。mobile viewport、mobile UA、DPR、iPhone emulationではないため、実機相当の証拠には使わない。
 
@@ -74,16 +74,17 @@ Artifact digestは`sha256:072eab5dda7ab62a6f1f323442dc83f5ff7338dff287ee6b55e331
 - Run 49: 日本語screenshot font setupがGitHub runnerのapt mirrorで停止し、2回目のattemptも含めて最終的に`cancelled`となった
 - Run 50: apt取得へtimeoutを追加したがsetupを完了できず、`failure`となった。`Tail Room JP`をリポジトリへ同梱し、workflowからapt依存を除去した
 - Run 51: 同梱fontの400／700を両方`loaded`と判定する一方、未使用の400を明示ロードしていなかったため、Room 3ケースが30秒timeoutした。`document.fonts.load()`で両weightを先に読み込み、match数とstatusを検査するよう修正した
-- 上記runは合格証拠へ含めない。最終判定はRun 52のreportとartifactによる
+- Run 53: スクリーンショット取得中に状態pollingが止まり、短い`play-recover`を見逃したfalse-negative。behaviorの`onStateChange`を使うbounded motion traceへ変更し、sequenceの全状態を取得するよう修正した
+- 上記runは合格証拠へ含めない。最終判定はRun 54のreportとartifactによる
 
 ## 4. Vercel evidence
 
 | Evidence | Result | Measured value |
 |---|---|---|
 | Project | 確定 | `cats-room`、project ID `prj_x77pFkTy2D8nBYq0QKDZZtV59Bz3` |
-| Deployment ID | 確定 | `dpl_CB63B9ksMX3YQrF2LceQLpx1QSfv` |
+| Deployment ID | 確定 | `dpl_H2kVdQKouknE9S76azQ27vk9iKGx` |
 | Deployment state | 合格 | `READY / production`、`aliasError: null` |
-| Served revision | 合格 | GitHub SHA `0358b05bd2888ef4afa7951d924e95ababda654f`と一致 |
+| Served revision | 合格 | GitHub SHA `26935545f03c11df63bc6ddc4a929ec9bab53ee3`と一致 |
 | Canonical URL | 合格 | `https://cat-certificate.vercel.app`、HTTP 200、title `Tail Room — Creator Preview 0.8` |
 | Bundled font | 合格 | `/assets/fonts/noto-sans-jp-400.ttf`、HTTP 200、`content-type: font/ttf` |
 | Build metadata | 合格 | `/build-meta.json`: version `0.8.0`、engine `phaser-4.2.1`、`runtimeFetches: false` |
@@ -120,7 +121,7 @@ Artifact digestは`sha256:072eab5dda7ab62a6f1f323442dc83f5ff7338dff287ee6b55e331
 
 ## 6. Acceptance rule
 
-v0.8のsoftware release checkpointは、次の5条件をSHA `0358b05bd2888ef4afa7951d924e95ababda654f`で満たした。
+v0.8のsoftware release checkpointは、次の5条件をSHA `26935545f03c11df63bc6ddc4a929ec9bab53ee3`で満たした。
 
 1. 最終treeで`npm run check`がexit 0
 2. 同一SHAのQuality Gateがsuccess

@@ -4,7 +4,7 @@
 
 ## Current
 
-Creator Preview 0.8.0のピクセルアート、猫のmotion、温かいDOM UIはリポジトリ上で再構築済みです。SHA `0358b05bd2888ef4afa7951d924e95ababda654f`に対するGitHub ActionsとVercelの証拠を取得し、現在は**実装＋CIソフトウェアWebGLゲート合格**です。物理iPhone、iOS Safari、実GPUのhardware gateは未完です。
+Creator Preview 0.8.0のピクセルアート、猫のmotion、温かいDOM UIはリポジトリ上で再構築済みです。SHA `26935545f03c11df63bc6ddc4a929ec9bab53ee3`に対するGitHub ActionsとVercelの証拠を取得し、現在は**実装＋CIソフトウェアWebGLゲート合格**です。物理iPhone、iOS Safari、実GPUのhardware gateは未完です。
 
 最優先資料: [WORK_HANDOFF.md](WORK_HANDOFF.md)
 
@@ -46,17 +46,17 @@ Creator Preview 0.8.0のピクセルアート、猫のmotion、温かいDOM UI�
 |---|---|---|
 | v0.8 source／structure | 実装済み | 131 textures、21 states／113 frames、6 layers |
 | `npm run check` | 合格 | exit 0、41 JavaScript構文検査、47 tests pass |
-| Runtime／evidence SHA | 確定 | `0358b05bd2888ef4afa7951d924e95ababda654f` |
-| GitHub Actions Quality Gate | 合格 | [Run 52](https://github.com/2hg7trp7rv-design/Cat_room/actions/runs/32096447738)、job `95588640609`、`completed / success` |
+| Runtime／evidence SHA | 確定 | `26935545f03c11df63bc6ddc4a929ec9bab53ee3` |
+| GitHub Actions Quality Gate | 合格 | [Run 54](https://github.com/2hg7trp7rv-design/Cat_room/actions/runs/32097369705)、job `95591222211`、`completed / success` |
 | CI WebGL 3-size PNG | 合格 | Chrome 151＋SwiftShader、320×667、393×852、430×932、全サイズ横overflowなし |
 | CI interaction | 合格 | 初回撫で→既定名`こむぎ`→Room、food、bed、toy、sleep |
-| Smoke artifact | 取得済み | ID `9310114629`、`tail-room-v0.8-webgl-smoke`、2026-11-16 03:42:32 UTCまで |
-| Vercel deployment | 合格 | `dpl_CB63B9ksMX3YQrF2LceQLpx1QSfv`、同じSHA、`READY / production`、`aliasError: null` |
+| Smoke artifact | 取得済み | ID `9310409064`、`tail-room-v0.8-webgl-smoke`、2026-11-16 03:57:51 UTCまで |
+| Vercel deployment | 合格 | `dpl_H2kVdQKouknE9S76azQ27vk9iKGx`、同じSHA、`READY / production`、`aliasError: null` |
 | Canonical URL HTTP 200 | 合格 | `https://cat-certificate.vercel.app`、title `Tail Room — Creator Preview 0.8` |
 | 物理iPhone／iOS Safari | `NOT TESTED` | 実機確認済みと書かない |
 | 実GPU 60fps目標／30fps下限 | `NOT TESTED` | CI SwiftShader値を性能判定へ使わない |
 
-Run 52のartifactでは、131／131 texturesがnon-empty、`temporary: false`、6 layerの順序、日本語`Tail Room JP` 400／700のloadを確認した。詳細なdigest、各interaction、Vercel応答は[V08_VALIDATION.md](V08_VALIDATION.md)を参照する。
+Run 54のartifactでは、131／131 texturesがnon-empty、`temporary: false`、6 layerの順序、日本語`Tail Room JP` 400／700のloadを確認した。詳細なdigest、各interaction、Vercel応答は[V08_VALIDATION.md](V08_VALIDATION.md)を参照する。
 
 ## Next gate
 
