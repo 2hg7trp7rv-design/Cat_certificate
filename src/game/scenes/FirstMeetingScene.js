@@ -1,4 +1,5 @@
 import Phaser from '../phaser.js'
+import { configureWorldCamera } from '../world/WorldCamera.js'
 import PettingInput from '../input/PettingInput.js'
 import RoomWorld from '../world/RoomWorld.js'
 
@@ -9,6 +10,7 @@ export class FirstMeetingScene extends Phaser.Scene {
   }
 
   create() {
+    configureWorldCamera(this)
     const ui = this.registry.get('ui')
     const store = this.registry.get('store')
     this.completed = false
@@ -29,7 +31,16 @@ export class FirstMeetingScene extends Phaser.Scene {
     ui.showFirstMeeting()
     window.__TAIL_ROOM_QA__.scene = 'FirstMeetingScene'
     window.__TAIL_ROOM_QA__.layers = [...this.world.layerNames]
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.petting?.destroy())
+    window.__TAIL_ROOM_QA__.room = this.world.getQaSnapshot()
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.petting?.destroy()
+      this.world?.destroy()
+    })
+  }
+
+  update(time) {
+    this.world?.step(time)
+    if (window.__TAIL_ROOM_QA__) window.__TAIL_ROOM_QA__.room = this.world?.getQaSnapshot()
   }
 }
 

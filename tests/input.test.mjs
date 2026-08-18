@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import PettingInput from '../src/game/input/PettingInput.js'
+import PettingInput, { classifyPettingZone } from '../src/game/input/PettingInput.js'
 
 class FakeCat {
   constructor() {
@@ -41,14 +41,20 @@ test('a slow stroke reports distance, pace, and local zone', () => {
   const completed = []
   const input = new PettingInput(new FakeCat(), { onComplete: result => completed.push(result) })
   input.start(pointer(1, 0, 0))
-  input.move(pointer(1, 36, 0))
+  input.move(pointer(1, 0, 36))
   input.active.startedAt = performance.now() - 500
-  input.finish(pointer(1, 36, 0))
+  input.finish(pointer(1, 0, 36))
 
   assert.equal(completed.length, 1)
   assert.equal(completed[0].pace, 'slow')
   assert.equal(completed[0].zone, 'flank')
   assert.equal(completed[0].distance, 36)
+})
+
+test('pixel cat tail contact follows the current facing direction', () => {
+  assert.equal(classifyPettingZone(30, -20, 'right'), 'tail')
+  assert.equal(classifyPettingZone(-30, -20, 'left'), 'tail')
+  assert.notEqual(classifyPettingZone(-30, -20, 'right'), 'tail')
 })
 
 test('the pointer-up segment counts when mobile move events are coarse', () => {

@@ -68,7 +68,7 @@ async function findMatches(files, expressions) {
   return matches
 }
 
-test('v0.7 has no Base64 scene chunks or assets_source dependency', async () => {
+test('v0.8 has no Base64 scene chunks or assets_source dependency', async () => {
   const files = await walk(ROOT, { excluded: new Set(['.git', 'node_modules']) })
   const forbiddenFiles = files
     .map(repoPath)
@@ -126,7 +126,7 @@ test('runtime loads only local application and Phaser assets', async () => {
   assert.deepEqual(offenders, [], `Vendor runtime dependencies locally; remote GitHub/CDN loading is forbidden:\n${offenders.join('\n')}`)
 })
 
-test('all four v0.7 scenes exist, extend Phaser.Scene, and are registered', async () => {
+test('all four v0.8 scenes exist, extend Phaser.Scene, and are registered', async () => {
   const configPath = resolve(ROOT, 'src/game/config.js')
   const mainPath = resolve(ROOT, 'src/main.js')
   const registrySource = [configPath, mainPath]
@@ -144,13 +144,13 @@ test('all four v0.7 scenes exist, extend Phaser.Scene, and are registered', asyn
   }
 })
 
-test('Phaser is explicitly configured for WebGL', async () => {
+test('Phaser is explicitly configured for pixel-perfect WebGL resize', async () => {
   const configPath = resolve(ROOT, 'src/game/config.js')
   assert.equal(await exists(configPath), true, 'Missing src/game/config.js')
   const source = await readText(configPath)
   const entry = await readText(resolve(ROOT, 'src/main.js'))
   assert.match(source, /\btype\s*:\s*Phaser\.WEBGL\b/, 'Phaser config must use `type: Phaser.WEBGL`')
-  assert.doesNotMatch(source, /\btype\s*:\s*Phaser\.(?:AUTO|CANVAS|HEADLESS)\b/, 'AUTO/CANVAS/HEADLESS renderer fallback is not accepted for v0.7')
+  assert.doesNotMatch(source, /\btype\s*:\s*Phaser\.(?:AUTO|CANVAS|HEADLESS)\b/, 'AUTO/CANVAS/HEADLESS renderer fallback is not accepted for v0.8')
   assert.match(entry, /getContext\(['"]webgl['"]\)/, 'preflight must probe the WebGL1 context Phaser 4.2.1 requests')
   assert.doesNotMatch(entry, /getContext\(['"]webgl2['"]\)/, 'a WebGL2-only preflight can disagree with the Phaser renderer')
   assert.match(entry, /WEBGL_lose_context/, 'the preflight context must be released before Phaser allocates its renderer')
@@ -159,6 +159,29 @@ test('Phaser is explicitly configured for WebGL', async () => {
     /failIfMajorPerformanceCaveat\s*:\s*true/,
     'WebGL must remain available on low-power GPUs; performance is validated separately',
   )
+  assert.match(source, /pixelArt\s*:\s*true/, 'v0.8 must enable Phaser pixel-art rendering')
+  assert.match(source, /smoothPixelArt\s*:\s*false/, 'world textures must not be smoothed')
+  assert.match(source, /roundPixels\s*:\s*true/, 'v0.8 must round rendered world pixels')
+  assert.match(source, /antialias\s*:\s*false/, 'v0.8 pixel world must disable antialiasing')
+  assert.match(source, /mode\s*:\s*Phaser\.Scale\.RESIZE/, 'Canvas must resize 1:1 with the mobile viewport')
+
+  const camera = await readText(resolve(ROOT, 'src/game/world/WorldCamera.js'))
+  assert.match(camera, /WORLD_ZOOM\s*=\s*2\b/, 'world camera zoom must remain 2× on every supported viewport')
+  assert.match(camera, /setZoom\(WORLD_ZOOM\)/, 'world scenes must apply the fixed integer zoom')
+})
+
+test('runtime uses the production pixel art manifest without placeholder art', async () => {
+  const artPath = resolve(ROOT, 'src/game/art/PixelArt.js')
+  assert.equal(await exists(artPath), true, 'Missing src/game/art/PixelArt.js')
+  const art = await readText(artPath)
+  const boot = await readText(resolve(ROOT, 'src/game/scenes/BootScene.js'))
+  assert.match(art, /PIXEL_TEXTURE_MANIFEST/)
+  assert.match(art, /pixel\.cat\./)
+  assert.match(art, /pixel\.room\./)
+  assert.match(art, /pixel\.furniture\./)
+  assert.match(boot, /createPixelTextures/)
+  assert.doesNotMatch(`${art}\n${boot}`, /createPlaceholderTextures|placeholder\./)
+  assert.equal(await exists(resolve(ROOT, 'src/game/art/PlaceholderArt.js')), false, 'Remove v0.7 PlaceholderArt.js')
 })
 
 test('room, furniture, cat, light, and shadow are named Phaser layers', async () => {
@@ -204,6 +227,19 @@ test('passive room guidance cannot block Canvas input', async () => {
   const styles = await readText(resolve(ROOT, 'src/styles.css'))
   const rule = styles.match(/\.world-hint,\s*\.toast\s*\{[\s\S]*?\}/)?.[0] || ''
   assert.match(rule, /pointer-events\s*:\s*none/)
+})
+
+test('the required naming step cannot be dismissed into a stuck onboarding state', async () => {
+  const ui = await readText(resolve(ROOT, 'src/ui/UIController.js'))
+  assert.match(ui, /openSheet\s*!==\s*e\.namePanel\)\s*this\.close\(\)/)
+  assert.match(ui, /openSheet\s*===\s*e\.namePanel\)\s*return/)
+})
+
+test('authored side-view cat motion faces its travel direction', async () => {
+  const art = await readText(resolve(ROOT, 'src/game/art/PixelArt.js'))
+  assert.match(art, /headX\s*=\s*bodyCenterX\s*\+\s*facing\s*\*/)
+  assert.match(art, /drawTail\(context,\s*tailVariant,\s*crouch\s*>\s*4,\s*-facing\)/)
+  assert.match(art, /context\.translate\(Math\.min\(8,\s*frame\s*\*\s*2\),\s*leap\)/)
 })
 
 test('the pinned Phaser 4 vendor artifact has a verified SHA-256 manifest', async () => {
@@ -254,10 +290,10 @@ test('the pinned Phaser 4 vendor artifact has a verified SHA-256 manifest', asyn
   )
 })
 
-test('runtime and package contain no stale v0.6 identity markers', async () => {
+test('runtime and package contain no stale pre-v0.8 identity markers', async () => {
   const packagePath = resolve(ROOT, 'package.json')
   const pkg = JSON.parse(await readText(packagePath))
-  assert.match(pkg.version, /^0\.7\.\d+(?:-[0-9A-Za-z.-]+)?$/, 'package.json must identify the v0.7 milestone')
+  assert.match(pkg.version, /^0\.8\.\d+(?:-[0-9A-Za-z.-]+)?$/, 'package.json must identify the v0.8 milestone')
 
   const files = [
     packagePath,
@@ -269,10 +305,12 @@ test('runtime and package contain no stale v0.6 identity markers', async () => {
   const offenders = await findMatches([...new Set(files)], [
     /\b(?:Creator\s+Preview|version|v)\s*0\.6(?:\.0)?\b/i,
     /["']0\.6\.0["']/,
+    /\b(?:Creator\s+Preview|version|v)\s*0\.7(?:\.0)?\b/i,
+    /["']0\.7\.0["']/,
     /\b__TAIL_ROOM_VERSION__\s*=\s*["']0\.6(?:\.0)?["']/,
     /["']raster-scene["']/,
   ])
-  assert.deepEqual(offenders, [], `Remove stale v0.6/raster identity markers:\n${offenders.join('\n')}`)
+  assert.deepEqual(offenders, [], `Remove stale pre-v0.8 identity markers:\n${offenders.join('\n')}`)
 })
 
 test('dist is a complete byte-for-byte static build of current runtime sources', async () => {

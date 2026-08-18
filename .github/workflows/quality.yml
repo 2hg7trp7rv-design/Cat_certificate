@@ -32,11 +32,11 @@ jobs:
           retention-days: 7
       - name: WebGL browser smoke
         run: npm run smoke
-      - name: Upload v0.7 WebGL smoke evidence
+      - name: Upload v0.8 WebGL smoke evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: tail-room-v0.7-webgl-smoke
-          path: artifacts/v0.7
+          name: tail-room-v0.8-webgl-smoke
+          path: artifacts/v0.8
           if-no-files-found: warn
           retention-days: 90

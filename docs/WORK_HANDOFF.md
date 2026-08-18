@@ -3,7 +3,7 @@
 更新日: 2026-08-18 JST
 状態: **このプロジェクトの現行方針を示す最優先資料**
 
-次にこのリポジトリを扱うWorkは、コード変更前に必ず本書を最後まで確認すること。READMEや既存画面より、本書の方針を優先する。v0.7の測定値と検証境界は[`V07_VALIDATION.md`](V07_VALIDATION.md)を参照する。
+次にこのリポジトリを扱うWorkは、コード変更前に必ず本書を最後まで確認すること。READMEや既存画面より、本書の方針を優先する。v0.8の検証値と未検証境界は[`V08_VALIDATION.md`](V08_VALIDATION.md)を参照する。v0.7の記録は履歴であり、現行仕様ではない。
 
 ---
 
@@ -44,9 +44,9 @@
 - リポジトリは改名済み。今後は`Cat_room`を使用する
 - 使用ブランチ: `main`
 - ユーザーの明示許可なしに別リポジトリや別の公開ブランチへ移さない
-- v0.7検証済み実装コミット: `368a2cd99d6013460a16004992225fe67c290fd3`
-- v0.7検証: [Quality Gate Run 46](https://github.com/2hg7trp7rv-design/Cat_room/actions/runs/32046435711) — success
-- この文書の更新でHEADは進むため、上記SHAは不変の実装チェックポイントとして扱う
+- v0.8実装コミット: `PENDING`。root作業者がmain反映後に正確なfull SHAを記録する
+- v0.8 Quality Gate: `PENDING`。run番号、URL、conclusionを実測後に記録する
+- v0.7の旧検証SHAや旧runをv0.8合格の証拠に流用しない
 - Work開始時には必ずmainの最新HEADとCIを再取得する
 
 ### Vercel
@@ -55,8 +55,8 @@
 - Vercel project id: `prj_x77pFkTy2D8nBYq0QKDZZtV59Bz3`
 - 現在の制作者確認URL: `https://cat-certificate.vercel.app`
 - ドメイン名は旧名称を維持しているが、現在のプロジェクトは`cats-room`
-- v0.7検証済みデプロイ: `dpl_Ad8LYruuA4UG5BskZvpVijdD6naY`
-- 上記デプロイは`368a2cd9...`へ対応し、READY / production。正本URLはHTTP 200
+- v0.8 deployment ID: `PENDING`。v0.8のGitHub SHAに対応する値を記録する
+- v0.8のREADY / productionと正本URLHTTP 200は`PENDING`。旧deploymentの状態を流用しない
 - `https://cat-certificate-v06-smoke.vercel.app`は旧検証用。今後の正本URLとして使わない
 - デプロイIDはコミットごとに変わるため、Work開始時に最新値をVercelから取得する
 
@@ -68,26 +68,30 @@
 
 ## 3. 現在の実装状態
 
-現行はCreator Preview 0.7.0。
+現行はCreator Preview 0.8.0。
 
-v0.7では、既存の状態エンジンを維持したまま、ゲーム世界をPhaser 4.2.1のWebGLキャンバスへ移行した。
+v0.8では、v0.7のPhaser 4.2.1 WebGL、状態エンジン、Canvas内入力を維持し、世界を温かいレトロ・ピクセルアートへ作り直した。猫のmotionと自主行動、代表的な睡眠・一人遊び、温かいDOM UIも共有treeへ実装済み。ただし、最新SHAのCI WebGLとVercel productionは証拠確定前である。
 
-### v0.7で実装済み
+### v0.8でソース実装済み
 
 - BootScene、FirstMeetingScene、RoomScene、DebugScene
-- 部屋、影、家具、猫、前景、光の独立レイヤー
-- 猫と家具のCanvas内形状判定
-- 23個の独立した仮ラスターパーツ
+- 216×472 art px、8pxグリッド、固定2倍world camera、Canvas `RESIZE`
+- room、shadow、furniture、cat、foreground、lightの6レイヤー
+- 部屋・家具・影・光18個と猫113フレーム、合計131個の独立テクスチャ
+- 猫21状態。96×96 art px共通canvas、足元pivot y=88
+- 呼吸、瞬き、耳、視線、しっぽ、立つ、座る、香箱、伏せる、歩く、向き直る
+- 丸寝、横寝、休息、窓観察、一人遊びのsequence
+- 20〜65秒間隔、seed固定、3回連続同一行動を避ける自主行動controller
+- 睡眠、空腹、低energyをプレイヤー遊び・自主行動より優先する中断規則
+- paper cream、walnut、sage、deep teal基調の温かい不透明DOM UI
 - 状態エンジンと8個のsystem facade
 - ローカル固定したPhaserとSHA-256検証
-- 静的な`dist/`生成とVercel配信
 - WebGL初期化失敗時の明示的なエラー表示
-- 320×667、393×852、430×932のQA表示モード
-- Chrome＋ANGLE SwiftShaderによるWebGL smokeとPNG証拠
+- 320×667、393×852、430×932のQA契約とWebGL smoke script
 
-保存データ互換性のため、`src/state.js`のスキーマとLocalStorage keyはv6を維持している。Creator Preview 0.7.0は描画基盤の版であり、保存スキーマ版ではない。
+保存データ互換性のため、`src/state.js`のスキーマは`version: 6`、LocalStorage keyは`tail-room-state-v6`を維持している。Creator Preview 0.8.0は描画・motion版であり、保存スキーマ版ではない。
 
-### v0.7で削除済み
+### 継続して廃止しているもの
 
 - 猫と部屋を焼き込んだ1枚画像
 - `assets_source/scene_day_*.b64`
@@ -110,12 +114,13 @@ v0.7では、既存の状態エンジンを維持したまま、ゲーム世界�
 
 ### 未完成・未検証
 
-- 仮ラスターパーツは最終アートではない
-- 猫はまだ呼吸、瞬き、耳、視線、しっぽ、姿勢遷移、歩行を持たない
-- 撫でている最中の身体反応、食事、睡眠は本番アニメーションではない
-- CIの夜間スクリーンショットでは顔を確認済みだが、実iPhoneでは未確認
-- 実GPUの目標60fps／最低30fpsは未確認
-- iOS Safari、TestFlight、音、触覚、通知は未実装または未検証
+- ローカル品質ゲートはexit 0、41 JavaScript構文検査、47 testsに合格。v0.8 latest SHAのCI WebGL、3サイズPNG、Vercel READY／HTTP 200は証拠確定前
+- 現在の131テクスチャはVisual Bible準拠の実装素材だが、最終商品アートの描き込みと毛柄展開は未完成
+- 撫でている最中の部位別身体反応、拒否、音、触覚は未実装
+- 食事の接近、匂い、咀嚼、量減少は未実装
+- 代表的な丸寝・横寝は実装したが、複数寝床、睡眠習慣、深夜固有反応は未実装
+- 物理iPhone、iOS Safari、実GPUの目標60fps／最低30fpsは未確認
+- 通知、TestFlight、App Store版は未実装
 
 ### Source of Truth
 
@@ -252,19 +257,20 @@ v0.7では、既存の状態エンジンを維持したまま、ゲーム世界�
 
 ## 6. アートとデザインの確定方針
 
-### 現時点の第一候補
+### 確定した画風
 
-> 高品質なラスターベース2D + パーツアニメーション + 重要動作の専用フレーム + WebGL合成
+> 温かいピクセルアートの部屋で、プレイヤーが触れていない時間にも、一匹の猫が自分の意思で暮らしている。
 
-「2.5D」という名称には固定しない。フル3Dへも即移行しない。
+懐かしさはCRT走査線や粗いfilterではなく、限定palette、読みやすいsilhouette、整数pixel、静かな間で作る。写真、3D、滑らかなvector、旧ペイント調素材を混在させない。
+
+基準は216×472 art px、8×8 art px grid、固定2倍world camera。端末幅に応じて猫や家具を比例拡大せず、大画面では壁、床、光、小物が多く見える。
 
 ### 猫の見た目
 
-- 写真ではない
-- SVGやベクター記号ではない
-- 太い輪郭線を使わない
-- 柔らかくペイントされた毛
-- 少しぬいぐるみ感がある
+- 写真、SVG、滑らかなベクターではない
+- 共通frameは96×96 art px、足元pivotを固定
+- 実silhouetteは概ね64〜80 art px
+- creamとgingerの柄、cocoaの輪郭を全frameで維持
 - 身体構造と動きは猫らしい
 - 目を巨大化しすぎない
 - 人間の笑顔をさせない
@@ -280,22 +286,20 @@ v0.7では、既存の状態エンジンを維持したまま、ゲーム世界�
 - ポーズごとに別個体へ見える
 - 猫と部屋の光源が違う
 - AI生成した別々の静止画を切り貼りする
+- 全身scale tweenを呼吸として使う
+- 写実blur shadowとpixel artを混在させる
+- CRT走査線、色収差、強いvignetteを足す
 
 ### 部屋のレイヤー
 
-最低限、以下を分離する。
+runtimeでは以下の6 Phaser layerを順序固定で分離する。
 
-1. 外景
-2. 壁
-3. 窓・カーテン
-4. 家具
-5. 床
-6. 猫と同じ奥行きの物
-7. 猫
-8. 前景
-9. 接地影
-10. 環境光・局所光
-11. 微粒子、空気感
+1. `roomLayer`: 外景、壁、床、窓
+2. `shadowLayer`: 家具と猫の接地影
+3. `furnitureLayer`: カーテン、家具、玩具、食器、寝床
+4. `catLayer`: 猫
+5. `foregroundLayer`: 猫の手前へ来る物
+6. `lightLayer`: 窓光、ランプ光、夜wash
 
 猫と背景を1枚へ焼き込まない。
 
@@ -308,22 +312,14 @@ v0.7では、既存の状態エンジンを維持したまま、ゲーム世界�
 
 昼画像全体へbrightnessフィルターを掛けて夜にする方式は禁止。
 
-### Visual Bible
+### 正本デザイン資料
 
-本番アート生成前に`docs/VISUAL_BIBLE.md`を作る。最低限以下を固定する。
+- `docs/VISUAL_BIBLE.md`: grid、palette、猫、部屋、光、採用不可例
+- `docs/MOTION_BIBLE.md`: 21状態、速度、行動優先順位、anchor、sleep／play sequence
+- `docs/UI_SYSTEM.md`: CanvasとDOMの役割、色、component、responsive、accessibility
+- `docs/V08_IMPLEMENTATION.md`: v0.8のscopeとrelease gate
 
-- 猫の頭身と顔比率
-- 目、鼻、耳、足、しっぽ
-- 毛柄
-- 色
-- 部屋素材
-- カメラ位置
-- 猫の標準サイズ
-- 光と影
-- アニメーション速度
-- UI透明度
-- 音と触覚
-- 採用不可例
+これらは作成予定ではなく、現行実装を判断する正本である。
 
 ---
 
@@ -335,7 +331,7 @@ Phaser 4.2.1を正確に固定し、`Phaser.WEBGL`で使用する。Phaser本体
 
 `AUTO`またはCanvas rendererへの暗黙のフォールバックは使用しない。WebGL初期化に失敗した場合はDOMエラーを表示する。低消費電力GPUを一律に拒否せず、性能は実端末で別途検証する。
 
-Phaser 4.2.1には移動と角度Tweenの組み合わせに関する未解決報告[#7341](https://github.com/phaserjs/phaser/issues/7341)がある。v0.8で歩行と耳・しっぽ回転を組み合わせる際は連続テストを行い、問題が出た場合は全変換を同じ更新系へ寄せる。
+Phaser 4.2.1には移動と角度Tweenの組み合わせに関する未解決報告[#7341](https://github.com/phaserjs/phaser/issues/7341)がある。v0.8の猫移動は`CatBehaviorController`内の同一update系で補間し、猫frameもmanual clockで選ぶ。今後も猫のposition／rotationを複数Tweenへ分散させない。
 
 ### Canvas/WebGLで扱うもの
 
@@ -370,7 +366,9 @@ src
 │  ├─ config.js
 │  ├─ phaser.js
 │  ├─ art
-│  │  └─ PlaceholderArt.js
+│  │  └─ PixelArt.js
+│  ├─ behavior
+│  │  └─ CatBehaviorController.js
 │  ├─ scenes
 │  │  ├─ BootScene.js
 │  │  ├─ FirstMeetingScene.js
@@ -396,7 +394,9 @@ src
 │  │  ├─ PettingInput.js
 │  │  └─ ObjectInput.js
 │  └─ world
-│     └─ RoomWorld.js
+│     ├─ AmbientRoomMotion.js
+│     ├─ RoomWorld.js
+│     └─ WorldCamera.js
 ├─ state.js
 ├─ state
 │  └─ GameStateStore.js
@@ -415,7 +415,7 @@ Webで以下の3体験が成立した時点で、完全なWeb完成を待たず�
 
 ---
 
-## 8. v0.7移行結果
+## 8. v0.8再構築結果
 
 ### 維持したもの
 
@@ -450,8 +450,12 @@ Webで以下の3体験が成立した時点で、完全なWeb完成を待たず�
 - `src/styles.css`
 - 初回導線とRoomScene
 - Canvas内入力判定
-- Phaser/WebGL描画
-- 静的ビルドとVercel配信
+- 131個のpixel textureを生成する`PixelArt.js`
+- 21状態・113フレームを表示する`Cat.js`
+- 状態優先、自主行動、移動、sleep／play sequenceを管理する`CatBehaviorController.js`
+- 216×472 worldと固定2倍camera
+- Phaser/WebGL描画と静的build pipeline
+- warm pixel UIとfocus／safe-area対応
 
 ### 削除済み
 
@@ -467,76 +471,67 @@ Webで以下の3体験が成立した時点で、完全なWeb完成を待たず�
 - 保存スキーマ`version: 6`
 - LocalStorage key `tail-room-state-v6`
 
-描画版が0.7であることを理由に保存スキーマを7へ上げない。変更する場合はv6データの明示的な移行テストを先に作る。
+描画版が0.8であることを理由に保存スキーマを8へ上げない。変更する場合はv6データの明示的な移行テストを先に作る。
 
 ---
 
 ## 9. 次のWorkが最初に行う作業
 
-### 事前確認
+### v0.8 release evidenceを閉じる
 
-1. `main`の最新HEADと本書の検証済み実装コミットとの差分を確認
+1. `main`の最新HEADと共有treeの差分を確認
 2. `npm ci`
 3. `npm run check`
-4. 最新Quality GateのWebGL evidence artifactを取得し、`report.json`とPNGを確認
-5. Vercelの最新deploymentが対象SHAへ対応し、正本URLがHTTP 200であることを確認
+4. v0.8を`main`へ反映し、full commit SHAを`V08_VALIDATION.md`へ記録
+5. 最新Quality Gateの`tail-room-v0.8-webgl-smoke` artifactを取得し、`report.json`とPNGを確認
+6. 320×667、393×852、430×932でCanvas寸法、横scroll、131 textures、6 layers、初回導線、Room入力を確認
+7. Vercel deploymentが同一SHAへ対応してREADYとなり、正本URLがHTTP 200であることを確認
+8. run番号、deployment ID、URL、PNG、OK／NG根拠を`V08_VALIDATION.md`へ記録
 
-### v0.7実機ゲート
-
-1. 最低1台の実iPhone SafariでFirstMeetingSceneとRoomSceneを開く
-2. ゆっくり撫でる操作で命名パネルが開き、タップだけでは開かないことを確認
-3. 食器、寝床、玩具、猫の表示位置と入力位置が一致することを確認
-4. 夜間の猫の目、鼻、輪郭が読めることを確認
-5. バックグラウンド移行と復帰後に描画と状態が一致することを確認
-6. 実GPUで目標60fps、最低30fpsを計測する
-7. 機種、iOS版、Safari版、計測方法、スクリーンショットを記録する
-8. 問題があればv0.8へ進む前にv0.7を修正する
-
-### v0.7条件の現在地
+### v0.8 source条件の現在地
 
 | 条件 | 状態 | 根拠 |
 |---|---|---|
-| 猫＋部屋の焼き込みなし | OK | 23個の独立テクスチャと6レイヤー |
-| Base64結合なし | OK | architecture test |
-| 透明DOMホットスポットなし | OK | DOM検査とWebGL smoke |
-| 猫、部屋、家具、光、影を分離 | OK | layer order検査 |
-| 3サイズ、横スクロールなし | CIでOK | 320×667、393×852、430×932のPNGと寸法検査 |
-| 夜間の顔 | CIでOK／実機未確認 | 393×852、21:38相当のPNGを目視 |
-| 目標60fps、最低30fps | 未検証 | SwiftShader値は実GPU判定に使用不可 |
-| GitHub Actions | OK | Run 46 success。以後も最新runを確認 |
-| Vercel READY / HTTP 200 | OK | 検証済みdeployment。以後も最新値を確認 |
+| 8px grid、216×472 world、固定2× | source OK | `PixelArt.js`, `WorldCamera.js` |
+| Canvasをviewportへ`RESIZE` | source OK | `config.js` |
+| 猫＋部屋の焼き込みなし | source OK | 131個の独立textureと6 layer |
+| 猫21状態・113フレーム | source OK | manifestとanimation spec |
+| 丸寝・横寝・休息 | source OK | behavior planとmotion test |
+| 一人遊びのnotice→catch | source OK | behavior planとmotion test |
+| 20〜65秒の自主行動 | source OK | deterministic scheduler |
+| warm DOM UI | source OK | `index.html`, `styles.css`, `UIController.js` |
+| 3サイズ、横scrollなし | CI待ち | v0.8 WebGL smokeの実結果を記録する |
+| GitHub Actions | 確定待ち | run番号とconclusionを記録する |
+| Vercel READY / HTTP 200 | 確定待ち | v0.8 deploymentを記録する |
 | 実iPhone | 未確認 | 実機確認済みと書かない |
+| 目標60fps、最低30fps | 未検証 | SwiftShader値は実GPU判定に使用不可 |
 
-### v0.8開始条件
+### v0.8物理iPhoneゲート
 
-実機ゲートを閉じた後に以下を行う。
-
-1. `docs/VISUAL_BIBLE.md`を作成
-2. 仮ラスターパーツを完成アート扱いしない
-3. 猫の基準サイズ、pivot、関節、奥行きを固定
-4. 呼吸、瞬き、耳、視線、しっぽを実装
-5. 座る、伏せる、立つの姿勢遷移を実装
-6. 歩行中も猫の大きさを一定に保つ
-7. 状態とBehaviorSystemを動作へ接続
-8. 30秒観察して静止画に見えないことを検証
+1. 最低1台の実iPhone SafariでFirstMeetingSceneとRoomSceneを開く
+2. ゆっくり撫でる操作で命名panelが開き、tapだけでは開かないことを確認
+3. 食器、寝床、玩具、猫の表示位置と入力位置が一致することを確認
+4. 30秒で複数の微細動作、2分で姿勢または場所の変化を確認
+5. 丸寝／横寝、一人遊びが説明文なしで読めることを確認
+6. 夜間の猫の目、鼻、耳、足、尾が読めることを確認
+7. background移行と復帰後に未再生animationの早送りや瞬間移動がないことを確認
+8. 実GPUで目標60fps、最低30fpsを計測する
+9. 機種、iOS版、Safari版、計測方法、screen captureを記録する
 
 ---
 
 ## 10. 以後のロードマップ
 
-### v0.8 猫の生命感
+### v0.8 ピクセル世界と猫の生命感 — source実装済み／release evidence待ち
 
-- 呼吸
-- 瞬き
-- 耳
-- 視線
-- しっぽ
-- 座る
-- 伏せる
-- 立つ
-- 歩く
+- 温かいpixel roomとwarm UI
+- 呼吸、瞬き、耳、視線、しっぽ
+- 座る、香箱、伏せる、立つ、歩く、向き直る
+- 丸寝、横寝、休息
+- 窓観察と代表的な一人遊び
+- seed固定の自主行動
 
-合格条件: 30秒見ても静止画に見えず、歩行中に猫の大きさが変わらない。
+合格条件: 30秒見ても静止画に見えず、歩行中に猫の大きさが変わらず、睡眠と遊びが説明文なしで読める。ソース条件は実装済み。CI、Vercel、物理iPhoneの合格は別途証拠が必要。
 
 ### v0.9 撫でる
 
@@ -564,26 +559,23 @@ Webで以下の3体験が成立した時点で、完全なWeb完成を待たず�
 
 合格条件: 説明文を消しても食事行動が分かる。
 
-### v0.11 睡眠
+### v0.11 睡眠の深化
 
 - 眠気
-- 寝床を見る
-- 移動
-- 寝床を踏む
-- 向きを変える
-- 丸くなる
-- 寝息
+- 複数寝床
+- 寝床ごとの進入、前景遮蔽、好み
+- 昼寝と夜睡眠の違い
+- 睡眠習慣と稀な寝返り
 - 深夜起動反応
 
 合格条件: 猫が寝床へ物理的に収まり、昼寝と夜の睡眠が違う。
 
-### v0.12 遊びと発見
+### v0.12 遊びの深化と発見
 
 - 猫じゃらし
 - リアルタイム視線追従
-- 狙う
-- 飛びつく
-- 押さえる
+- player入力へ追従する狙いと飛びつき
+- 玩具別のcatch／recover差分
 - 箱、紙袋、カーテン、日なた
 - 発見記録
 
@@ -668,13 +660,15 @@ v0.9からv0.11の途中で開始。
 
 ## 14. Work開始時の最重要判断
 
-次のWorkは、v0.6へ戻ったり、仮素材を完成アートとして磨いたり、WebGL失敗をCanvasフォールバックで隠したりしてはいけない。
+次のWorkは、v0.6／v0.7の仮素材へ戻ったり、pixel artへsmooth filterを掛けたり、WebGL失敗をCanvas fallbackで隠したりしてはいけない。
 
-最初に実iPhoneと実GPUでv0.7実機ゲートを閉じる。合格後は次の順序を守る。
+最初にv0.8の最新SHA、Quality Gate、3サイズPNG、Vercel READY／HTTP 200を同じ証拠へ結び付ける。次に物理iPhoneと実GPUのhardware gateを閉じる。これらを確認せずv0.8を全面合格と書かない。
 
-1. v0.8: 猫が30秒静止画に見えない
-2. v0.9: 撫でている最中に反応する
-3. v0.10: 食事が画面上で実際に起こる
-4. v0.11: 睡眠が画面上で実際に起こる
+その後は次の順序を守る。
 
-Canvas/WebGL基盤そのものを再構築し直さず、現在の分離レイヤー、状態互換性、CI WebGL smokeを土台として進める。この順番を崩さない。
+1. v0.9: 撫でている最中に部位別反応を返す
+2. v0.10: 食事が接近、匂い、咀嚼まで画面上で起こる
+3. v0.11: 複数寝床と睡眠習慣で睡眠を深める
+4. v0.12: drag玩具、箱、袋、発見記録へ遊びを広げる
+
+Canvas/WebGL基盤、216×472 world、8px grid、固定2倍camera、6分離layer、v6保存互換性、CI WebGL smokeを土台として進める。この順番を崩さない。

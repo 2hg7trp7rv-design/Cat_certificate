@@ -14,6 +14,9 @@ export class InteractiveObject extends Phaser.GameObjects.Container {
     this.name = name || texture || 'interactive-object'
     this.visual = scene.add.image(0, 0, texture)
     this.visual.setScale(scale)
+    this.baseVisualY = this.visual.y
+    this.hovered = false
+    this.attention = false
     this.add(this.visual)
     scene.add.existing(this)
 
@@ -25,14 +28,30 @@ export class InteractiveObject extends Phaser.GameObjects.Container {
     this.setInteractive(shape, containsFor(shape))
     this.inputShape = shape
 
-    this.on('pointerover', () => this.visual.setAlpha(0.94))
-    this.on('pointerout', () => this.visual.setAlpha(1))
-    this.on('pointerup', pointer => onActivate?.(this, pointer))
+    this.on('pointerover', () => {
+      this.hovered = true
+      this.applyTint()
+    })
+    this.on('pointerout', () => {
+      this.hovered = false
+      this.visual.setY(this.baseVisualY)
+      this.applyTint()
+    })
+    this.on('pointerdown', () => this.visual.setY(this.baseVisualY + 1))
+    this.on('pointerup', pointer => {
+      this.visual.setY(this.baseVisualY)
+      onActivate?.(this, pointer)
+    })
   }
 
   setAttention(active) {
-    this.visual.setTint(active ? 0xffefc7 : 0xffffff)
+    this.attention = Boolean(active)
+    this.applyTint()
     return this
+  }
+
+  applyTint() {
+    this.visual.setTint(this.attention ? 0xffd77a : this.hovered ? 0xffefc7 : 0xffffff)
   }
 }
 

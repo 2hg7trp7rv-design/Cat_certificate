@@ -8,6 +8,7 @@ export class UIController {
     this.store = store
     this.game = null
     this.openSheet = null
+    this.focusReturnTarget = null
     this.toastTimer = null
     this.elements = {
       app: select('#app'),
@@ -58,13 +59,18 @@ export class UIController {
       this.game?.scene.start('RoomScene')
       this.toast(`${name}との暮らしが始まりました。`, 2400)
     })
+    e.petNameInput.addEventListener('keydown', event => {
+      if (event.key === 'Enter') e.startLife.click()
+    })
 
     e.memoryButton.addEventListener('click', () => {
       this.renderMemories()
       this.open(e.memorySheet)
     })
     e.creatorButton.addEventListener('click', () => this.open(e.creatorSheet))
-    e.backdrop.addEventListener('click', () => this.close())
+    e.backdrop.addEventListener('click', () => {
+      if (this.openSheet !== e.namePanel) this.close()
+    })
     selectAll('[data-close]').forEach(button => button.addEventListener('click', () => this.close()))
 
     selectAll('[data-food]').forEach(button => button.addEventListener('click', () => {
@@ -118,7 +124,12 @@ export class UIController {
     })
     window.addEventListener('pagehide', () => this.store.markSeen())
     window.addEventListener('keydown', event => {
-      if (event.key === 'Escape') this.close()
+      if (event.key === 'Escape' && this.openSheet) {
+        if (this.openSheet === e.namePanel) return
+        event.preventDefault()
+        this.close()
+      }
+      if (event.key === 'Tab' && this.openSheet) this.trapFocus(event)
     })
   }
 
@@ -159,16 +170,55 @@ export class UIController {
   }
 
   open(sheet) {
-    this.close()
+    this.close(false)
+    this.focusReturnTarget = document.activeElement instanceof HTMLElement ? document.activeElement : null
     this.openSheet = sheet
     this.elements.backdrop.hidden = false
     sheet.hidden = false
+    this.updateExpandedState(sheet, true)
+    requestAnimationFrame(() => {
+      if (sheet === this.elements.namePanel) return
+      const firstControl = this.getFocusable(sheet)[0]
+      firstControl?.focus({ preventScroll: true })
+    })
   }
 
-  close() {
-    if (this.openSheet) this.openSheet.hidden = true
+  close(restoreFocus = true) {
+    const sheet = this.openSheet
+    if (sheet) {
+      sheet.hidden = true
+      this.updateExpandedState(sheet, false)
+    }
     this.openSheet = null
     this.elements.backdrop.hidden = true
+    if (restoreFocus && this.focusReturnTarget?.isConnected) {
+      this.focusReturnTarget.focus({ preventScroll: true })
+    }
+    this.focusReturnTarget = null
+  }
+
+  getFocusable(root) {
+    return selectAll('button:not([disabled]), input:not([disabled]), summary, [href], [tabindex]:not([tabindex="-1"])')
+      .filter(element => root.contains(element) && !element.hidden && element.getClientRects().length > 0)
+  }
+
+  trapFocus(event) {
+    const controls = this.getFocusable(this.openSheet)
+    if (!controls.length) return
+    const first = controls[0]
+    const last = controls.at(-1)
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault()
+      last.focus()
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault()
+      first.focus()
+    }
+  }
+
+  updateExpandedState(sheet, expanded) {
+    if (sheet === this.elements.memorySheet) this.elements.memoryButton.setAttribute('aria-expanded', String(expanded))
+    if (sheet === this.elements.creatorSheet) this.elements.creatorButton.setAttribute('aria-expanded', String(expanded))
   }
 
   toast(message, duration = 1900) {

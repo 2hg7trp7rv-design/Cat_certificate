@@ -215,7 +215,22 @@ test('room QA state is fresh and independent of saved preview data', () => {
   assert.equal(store.getState().petName, 'こむぎ')
   assert.equal(store.getState().debug.forceHungry, false)
   assert.equal(store.getState().debug.forceSleep, false)
+  assert.equal(store.snapshot().time.phase, 'day')
+  assert.equal(store.snapshot().time.sleeping, false)
+  assert.equal(store.snapshot().behavior.id, 'idle')
   assert.equal(store.ephemeral, true)
   store.play()
   assert.equal(writes, 0)
+})
+
+test('first-meeting QA carries deterministic daytime into the named room', () => {
+  const now = at(2026, 8, 15, 2)
+  const store = new GameStateStore({ storage: null, now: () => now, qaScene: 'first-meeting' })
+
+  assert.equal(store.snapshot().time.phase, 'day')
+  assert.equal(store.snapshot().time.sleeping, false)
+  store.begin('こむぎ')
+  assert.equal(store.snapshot().time.phase, 'day')
+  assert.equal(store.snapshot().time.sleeping, false)
+  assert.equal(store.snapshot().behavior.id, 'idle')
 })

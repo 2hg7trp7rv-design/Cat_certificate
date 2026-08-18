@@ -37,11 +37,31 @@ export class GameStateStore {
     this.state = this.load()
 
     if (qaScene === 'first-meeting') {
-      this.state = parseState(null, this.now())
+      const actualNow = this.now()
+      const qaNoon = new Date(actualNow)
+      qaNoon.setHours(12, 0, 0, 0)
+      const freshQaState = parseState(null, qaNoon.getTime())
+      this.state = {
+        ...freshQaState,
+        debug: {
+          ...freshQaState.debug,
+          timeOffsetMs: qaNoon.getTime() - actualNow,
+        },
+      }
     }
     if (qaScene === 'room') {
-      const freshQaState = parseState(null, this.now())
-      this.state = beginLife(freshQaState, { petName: 'こむぎ', routine: DEFAULT_ROUTINE }, this.now())
+      const actualNow = this.now()
+      const qaNoon = new Date(actualNow)
+      qaNoon.setHours(12, 0, 0, 0)
+      const freshQaState = parseState(null, qaNoon.getTime())
+      const living = beginLife(freshQaState, { petName: 'こむぎ', routine: DEFAULT_ROUTINE }, qaNoon.getTime())
+      this.state = {
+        ...living,
+        debug: {
+          ...living.debug,
+          timeOffsetMs: qaNoon.getTime() - actualNow,
+        },
+      }
     }
   }
 
@@ -101,7 +121,9 @@ export class GameStateStore {
   }
 
   begin(petName, routine = DEFAULT_ROUTINE) {
-    return this.commit(beginLife(this.state, { petName, routine }, this.now()))
+    const actualNow = this.now()
+    const lifecycleNow = this.ephemeral ? this.time.now(this.state, actualNow) : actualNow
+    return this.commit(beginLife(this.state, { petName, routine }, lifecycleNow))
   }
 
   pet(zone, pace = 'slow') {

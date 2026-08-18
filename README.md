@@ -6,35 +6,41 @@
 
 **[docs/WORK_HANDOFF.md](docs/WORK_HANDOFF.md)**
 
-この文書が、商品方針、技術方針、現行コード、禁止事項、次の作業順序をまとめた最優先資料です。v0.7の検証根拠は[docs/V07_VALIDATION.md](docs/V07_VALIDATION.md)に分離しています。
+この文書が、商品方針、技術方針、現行コード、禁止事項、次の作業順序をまとめた最優先資料です。v0.8の検証境界と確定前の証拠欄は[docs/V08_VALIDATION.md](docs/V08_VALIDATION.md)に分離しています。
 
 ## 現在の状態
 
-- 現在版: Creator Preview 0.7.0
+- 現在版: Creator Preview 0.8.0
 - GitHub: `2hg7trp7rv-design/Cat_room`
-- ブランチ: `main`
+- 正式ブランチ: `main`
 - 制作者確認URL: `https://cat-certificate.vercel.app`
-- Phaser 4.2.1を正確に固定し、ゲーム世界をWebGLキャンバスへ移行済み
-- v0.7のソース、静的ビルド、CI上のソフトウェアWebGL検証は合格
-- 実iPhone、iOS Safari、実GPUでの30fps下限は未確認
-- 次の実装工程はv0.8「猫の生命感」。ただし最初にv0.7実機ゲートを閉じる
+- Phaser 4.2.1を固定し、WebGL世界を温かいレトロ・ピクセルアートへ再構築
+- 216×472 art px、8pxグリッド、固定2倍world camera、端末寸法へ`RESIZE`
+- 部屋、影、家具、猫、前景、光の6レイヤーと131個の独立テクスチャ
+- 猫は21状態・113フレーム。20〜65秒間隔の自主行動、丸寝・横寝、休息、窓観察、一人遊びを実装
+- DOM UIはpaper cream、walnut、sage、deep tealを基調とする温かい不透明パネルへ刷新
+- 保存データは`version: 6`と`tail-room-state-v6`を維持
 
-## v0.7で実施したこと
+## v0.8で作り直したこと
 
-- BootScene、FirstMeetingScene、RoomScene、DebugSceneを実装
-- 部屋、影、家具、猫、前景、光を独立レイヤー化
-- 猫と家具の入力をCanvas内の形状判定へ移行
-- 23個の仮ラスターパーツを個別テクスチャとして生成
-- 状態エンジンとv6セーブ互換性を維持し、時刻、睡眠、成長、空腹を新描画層へ接続
-- 食事、撫で、遊びの記録と思い出UIを維持
-- Phaserをローカルへ固定し、ビルド時にSHA-256を検証
-- Base64分割画像、透明DOMホットスポット、旧`src/app.js`、古い追跡対象`dist/`を廃止
-- GitHub Actionsで3サイズ、夜間、初回導線、タッチ操作、静的成果物をWebGL検証
+- 旧仮ラスターパーツを、同一パレット・同一密度のピクセルテクスチャ群へ置換
+- 猫の96×96 art px共通フレームと足元pivotを固定
+- 呼吸、瞬き、耳、視線、しっぽ、立つ、座る、香箱、伏せる、歩く、向き直るを実装
+- `bed-sleep`で丸寝または横寝へ移る睡眠sequenceを実装
+- `rug-play`で気づく、構える、飛びつく、捕まえる、戻る一人遊びsequenceを実装
+- 状態エンジンの睡眠、空腹、低energyを自主行動やプレイヤー操作より優先
+- seed固定で再現できる行動controllerを追加し、同じ自主行動を3回連続で選ばないようにした
+- Canvas内の猫・家具入力と、名前、食事、思い出、設定のDOM UIを役割分離
+- 320×667、393×852、430×932を対象とするCI WebGL smokeをv0.8仕様へ更新
+
+設計根拠は[Visual Bible](docs/VISUAL_BIBLE.md)、[Motion Bible](docs/MOTION_BIBLE.md)、[UI System](docs/UI_SYSTEM.md)、[Implementation Contract](docs/V08_IMPLEMENTATION.md)を参照してください。
 
 ## 検証上の線引き
 
-GitHub ActionsではChrome＋ANGLE SwiftShaderによるWebGL 1.0描画を確認しています。これはレイヤー、入力、画面サイズ、静的配信を検証する証拠であり、実iPhoneのGPU性能を示すものではありません。実機確認が終わるまで、v0.7を全面合格または製品完成とは扱いません。
+現時点で確定しているのは、リポジトリ内のv0.8ソースと構造、およびローカル品質ゲート（41 JavaScript構文検査・47テスト）の合格です。最新コミットに対するGitHub Actions WebGL smoke、Vercel productionのREADY／HTTP 200、公開画面PNGは、実際の結果を取得してから合格と記録します。
+
+CIのChrome＋ANGLE SwiftShaderが合格しても、実iPhone、iOS Safari、実GPUの性能を証明したことにはなりません。物理iPhoneでの初回導線、タッチ、夜間視認性、バックグラウンド復帰、目標60fps／最低30fpsは未検証です。
 
 ## 次工程
 
-最低1台の実iPhoneで描画、夜間の顔、タッチ、復帰、30fps下限を確認してv0.7実機ゲートを閉じる。その後、Visual Bibleを先に作成し、v0.8で呼吸、瞬き、耳、視線、しっぽ、姿勢遷移、歩行を実装します。
+ローカル`npm run check`の合格を、GitHub Actions WebGL smoke、3画面サイズのPNG、Vercel productionとv0.8の対象SHAへ結び付けます。その後、最低1台の実iPhoneで実機ゲートを閉じ、v0.9の部位別撫で反応へ進みます。

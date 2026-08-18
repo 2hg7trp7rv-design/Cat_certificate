@@ -12,7 +12,7 @@ export class DebugScene extends Phaser.Scene {
   create() {
     this.samples.length = 0
     this.lastRenderAt = 0
-    this.panel = this.add.rectangle(10, 96, 373, 110, 0x15110e, 0.78).setOrigin(0)
+    this.panel = this.add.rectangle(10, 96, Math.max(280, this.scale.width - 20), 110, 0x15110e, 0.78).setOrigin(0)
     this.label = this.add.text(22, 108, '', {
       color: '#fff7ec',
       fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif',
@@ -23,6 +23,9 @@ export class DebugScene extends Phaser.Scene {
     this.scene.bringToTop()
     this.lastSampleAt = performance.now()
     this.warmupUntil = this.lastSampleAt + 1000
+    this.onResize = gameSize => this.panel.setSize(Math.max(280, gameSize.width - 20), 110)
+    this.scale.on('resize', this.onResize)
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.scale.off('resize', this.onResize))
   }
 
   update(time) {
@@ -50,10 +53,10 @@ export class DebugScene extends Phaser.Scene {
     const displaySize = `${Math.round(canvas?.clientWidth || 0)}×${Math.round(canvas?.clientHeight || 0)}`
     const layerNames = room?.world?.layerNames || window.__TAIL_ROOM_QA__.layers || []
     this.label.setText([
-      `Tail Room v0.7.0 / Phaser 4.2.1 / WebGL`,
+      `Tail Room v0.8.0 / Phaser 4.2.1 / WebGL pixel`,
       `Canvas ${internalSize} → ${displaySize}  FPS ${fps.toFixed(1)}  min ${minimum.toFixed(1)}  avg ${average.toFixed(1)}`,
       `Layers ${layerNames.join(' · ')}`,
-      `Context ${window.__TAIL_ROOM_QA__.contextLost ? 'LOST' : 'active'}  Art temporary raster parts`,
+      `Context ${window.__TAIL_ROOM_QA__.contextLost ? 'LOST' : 'active'}  World 2× / 8px grid`,
     ])
     window.__TAIL_ROOM_QA__.displaySize = displaySize
     window.__TAIL_ROOM_QA__.fps = {
@@ -70,9 +73,18 @@ export class DebugScene extends Phaser.Scene {
   drawInputShapes(room) {
     this.hitGraphics.clear()
     this.hitGraphics.lineStyle(1, 0x4fffc4, 0.68)
+    const camera = room?.cameras?.main
+    if (!camera) return
+    const worldViewX = camera.scrollX + camera.width / 2 - camera.width / (2 * camera.zoom)
+    const worldViewY = camera.scrollY + camera.height / 2 - camera.height / (2 * camera.zoom)
     for (const object of room?.world?.getInteractiveObjects?.() || []) {
       const bounds = object.getBounds()
-      this.hitGraphics.strokeRect(bounds.x, bounds.y, bounds.width, bounds.height)
+      this.hitGraphics.strokeRect(
+        Math.round((bounds.x - worldViewX) * camera.zoom),
+        Math.round((bounds.y - worldViewY) * camera.zoom),
+        Math.round(bounds.width * camera.zoom),
+        Math.round(bounds.height * camera.zoom),
+      )
     }
   }
 }

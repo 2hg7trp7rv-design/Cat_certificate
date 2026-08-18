@@ -1,5 +1,5 @@
 import Phaser from '../phaser.js'
-import { createPlaceholderTextures } from '../art/PlaceholderArt.js'
+import { createPixelTextures } from '../art/PixelArt.js'
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -11,11 +11,13 @@ export class BootScene extends Phaser.Scene {
     const store = this.registry.get('store')
 
     try {
-      const textures = createPlaceholderTextures(this)
-      window.__TAIL_ROOM_QA__.placeholderTextures = {
+      const textures = createPixelTextures(this)
+      window.__TAIL_ROOM_QA__.pixelTextures = {
         created: textures.createdKeys.length,
         reused: textures.reusedKeys.length,
-        temporary: true,
+        nonEmpty: textures.verifiedNonEmptyKeys.length,
+        temporary: false,
+        grid: 8,
       }
       window.__TAIL_ROOM_QA__.renderer = this.game.renderer.type === Phaser.WEBGL ? 'webgl' : 'unexpected'
       window.__TAIL_ROOM_QA__.ready = true

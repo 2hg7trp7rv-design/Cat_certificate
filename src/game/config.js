@@ -3,10 +3,17 @@ import BootScene from './scenes/BootScene.js'
 import DebugScene from './scenes/DebugScene.js'
 import FirstMeetingScene from './scenes/FirstMeetingScene.js'
 import RoomScene from './scenes/RoomScene.js'
+export {
+  WORLD_CENTER_X,
+  WORLD_CENTER_Y,
+  WORLD_HEIGHT,
+  WORLD_WIDTH,
+  WORLD_ZOOM,
+  configureWorldCamera,
+} from './world/WorldCamera.js'
 
 export const DESIGN_WIDTH = 393
 export const DESIGN_HEIGHT = 852
-
 export function createGameConfig({ store, ui, onReady } = {}) {
   return {
     type: Phaser.WEBGL,
@@ -17,15 +24,16 @@ export function createGameConfig({ store, ui, onReady } = {}) {
     transparent: false,
     banner: false,
     render: {
-      antialias: true,
-      antialiasGL: true,
-      pixelArt: false,
-      roundPixels: false,
+      antialias: false,
+      antialiasGL: false,
+      pixelArt: true,
+      smoothPixelArt: false,
+      roundPixels: true,
       powerPreference: 'high-performance',
     },
     scale: {
-      mode: Phaser.Scale.FIT,
-      autoCenter: Phaser.Scale.CENTER_BOTH,
+      mode: Phaser.Scale.RESIZE,
+      autoCenter: Phaser.Scale.NO_CENTER,
       width: DESIGN_WIDTH,
       height: DESIGN_HEIGHT,
     },

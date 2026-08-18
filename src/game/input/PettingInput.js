@@ -1,7 +1,8 @@
-export function classifyPettingZone(x, y) {
+export function classifyPettingZone(x, y, facing = 'right') {
   if (y < -48) return 'head'
-  if (x > 72 && y > -34) return 'tail'
-  if (x < -12) return 'back'
+  const towardTail = facing === 'left' ? x < -24 : x > 24
+  if (towardTail && y > -42) return 'tail'
+  if (Math.abs(x) > 12) return 'back'
   return 'flank'
 }
 
@@ -69,7 +70,7 @@ export class PettingInput {
       return
     }
     const result = {
-      zone: classifyPettingZone(local.x, local.y),
+      zone: classifyPettingZone(local.x, local.y, this.cat.facing),
       pace: classifyPettingPace(this.active.distance, duration),
       distance: this.active.distance,
       duration,

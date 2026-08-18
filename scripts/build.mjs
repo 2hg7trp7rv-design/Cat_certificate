@@ -14,6 +14,8 @@ const required = [
   'vendor/phaser-4.2.1/manifest.json',
   'vendor/phaser-4.2.1/phaser.esm.min.js',
   'vendor/phaser-4.2.1/LICENSE.md',
+  'public/assets/favicon.png',
+  'public/assets/tail-room-icon.png',
   'robots.txt',
   'vercel.json'
 ]
@@ -39,6 +41,9 @@ await mkdir(dist, { recursive: true })
 await cp(join(root, 'index.html'), join(dist, 'index.html'))
 await cp(join(root, 'src'), join(dist, 'src'), { recursive: true })
 await cp(join(root, 'vendor'), join(dist, 'vendor'), { recursive: true })
+if (existsSync(join(root, 'public'))) {
+  await cp(join(root, 'public'), dist, { recursive: true })
+}
 await cp(join(root, 'robots.txt'), join(dist, 'robots.txt'))
 
 const pkg = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'))

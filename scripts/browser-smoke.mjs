@@ -5,7 +5,7 @@ import { constants as fsConstants } from 'node:fs'
 import { join, resolve } from 'node:path'
 
 const ROOT = resolve(process.cwd())
-const ARTIFACT_DIR = resolve(ROOT, 'artifacts/v0.7')
+const ARTIFACT_DIR = resolve(ROOT, 'artifacts/v0.8')
 const APP_PORT = Number(process.env.SMOKE_APP_PORT || 4173)
 const DRIVER_PORT = Number(process.env.SMOKE_DRIVER_PORT || 9515)
 const APP_ORIGIN = `http://127.0.0.1:${APP_PORT}`
@@ -20,13 +20,14 @@ const REQUIRED_LAYERS = [
   'foregroundLayer',
   'lightLayer',
 ]
+const REQUIRED_CORE_CENTERS = ['cat', 'bowl', 'toy', 'bed', 'window']
 const processLogs = new Map()
 const children = []
 let driver = null
 
 const report = {
   schema: 1,
-  milestone: 'v0.7',
+  milestone: 'v0.8',
   createdAt: new Date().toISOString(),
   environment: {
     runner: process.env.RUNNER_ENVIRONMENT || null,
@@ -261,6 +262,7 @@ const RUNTIME_SNAPSHOT = `
   const qa = window.__TAIL_ROOM_QA__ || {};
   const appRect = app?.getBoundingClientRect();
   const canvasRect = canvas?.getBoundingClientRect();
+  const canvasStyle = canvas ? getComputedStyle(canvas) : null;
   let gl = null;
   let webgl = null;
   if (canvas) {
@@ -303,6 +305,13 @@ const RUNTIME_SNAPSHOT = `
     appMode: app?.dataset.mode || null,
     appRect: appRect ? { x: appRect.x, y: appRect.y, width: appRect.width, height: appRect.height } : null,
     canvasRect: canvasRect ? { x: canvasRect.x, y: canvasRect.y, width: canvasRect.width, height: canvasRect.height } : null,
+    canvasAttributes: canvas ? { width: canvas.width, height: canvas.height } : null,
+    canvasClient: canvas ? { width: canvas.clientWidth, height: canvas.clientHeight } : null,
+    canvasCss: canvasStyle ? {
+      width: Number.parseFloat(canvasStyle.width),
+      height: Number.parseFloat(canvasStyle.height),
+      imageRendering: canvasStyle.imageRendering,
+    } : null,
     canvasCount: document.querySelectorAll('#game canvas').length,
     webgl,
     runtimeErrorVisible: runtimeError ? visible(runtimeError) : true,
@@ -351,9 +360,25 @@ async function warmedFpsDiagnostic() {
   }
 }
 
+function assertPlainBounds(bounds, label) {
+  assert.ok(bounds, `${label}: bounds diagnostics are unavailable`)
+  assert.deepEqual(
+    Object.keys(bounds).sort(),
+    ['bottom', 'height', 'right', 'width', 'x', 'y'],
+    `${label}: bounds must contain plain numeric geometry only`,
+  )
+  for (const property of ['x', 'y', 'width', 'height', 'right', 'bottom']) {
+    assert.ok(Number.isFinite(bounds[property]), `${label}: bounds.${property} is not finite`)
+  }
+  assert.ok(bounds.width > 0 && bounds.height > 0, `${label}: bounds are empty`)
+  assert.ok(Math.abs(bounds.right - (bounds.x + bounds.width)) < 0.001, `${label}: bounds.right is inconsistent`)
+  assert.ok(Math.abs(bounds.bottom - (bounds.y + bounds.height)) < 0.001, `${label}: bounds.bottom is inconsistent`)
+  return bounds
+}
+
 function assertRoomSnapshot(snapshot, size) {
   const [expectedWidth, expectedHeight] = size.split('x').map(Number)
-  assert.equal(snapshot.version, '0.7.0', `${size}: unexpected application version`)
+  assert.equal(snapshot.version, '0.8.0', `${size}: unexpected application version`)
   assert.equal(snapshot.ready, true, `${size}: runtime did not reach ready state`)
   assert.equal(snapshot.qa.renderer, 'webgl', `${size}: Phaser did not select WebGL`)
   assert.equal(snapshot.qa.scene, 'RoomScene', `${size}: RoomScene is not active`)
@@ -361,18 +386,109 @@ function assertRoomSnapshot(snapshot, size) {
   assert.equal(snapshot.canvasCount, 1, `${size}: expected exactly one Phaser canvas`)
   assert.ok(snapshot.appRect, `${size}: #app has no measurable bounds`)
   assert.ok(snapshot.canvasRect, `${size}: the Phaser canvas has no measurable bounds`)
+  assert.ok(snapshot.canvasAttributes, `${size}: the Phaser canvas has no bitmap dimensions`)
+  assert.ok(snapshot.canvasClient, `${size}: the Phaser canvas has no client dimensions`)
+  assert.ok(snapshot.canvasCss, `${size}: the Phaser canvas has no computed style`)
   assert.ok(snapshot.webgl, `${size}: the Phaser canvas has no WebGL context`)
   assert.equal(snapshot.webgl.contextLost, false, `${size}: WebGL context is lost`)
-  assert.deepEqual(snapshot.layers, REQUIRED_LAYERS, `${size}: Phaser layer order differs from the v0.7 contract`)
+  assert.equal(snapshot.qa.contextLost, false, `${size}: the runtime reported a lost WebGL context`)
+  assert.deepEqual(snapshot.layers, REQUIRED_LAYERS, `${size}: Phaser layer order differs from the v0.8 contract`)
   assert.ok(Math.abs(snapshot.appRect.width - expectedWidth) < 0.5, `${size}: app width is ${snapshot.appRect.width}`)
   assert.ok(Math.abs(snapshot.appRect.height - expectedHeight) < 0.5, `${size}: app height is ${snapshot.appRect.height}`)
+  assert.ok(Math.abs(snapshot.canvasRect.width - expectedWidth) < 0.5, `${size}: canvas width is ${snapshot.canvasRect.width}`)
+  assert.ok(Math.abs(snapshot.canvasRect.height - expectedHeight) < 0.5, `${size}: canvas height is ${snapshot.canvasRect.height}`)
+  assert.deepEqual(
+    snapshot.canvasAttributes,
+    { width: expectedWidth, height: expectedHeight },
+    `${size}: canvas bitmap attributes do not match the QA viewport`,
+  )
+  assert.deepEqual(
+    snapshot.canvasClient,
+    { width: expectedWidth, height: expectedHeight },
+    `${size}: canvas CSS client dimensions do not match the QA viewport`,
+  )
+  assert.ok(Math.abs(snapshot.canvasCss.width - expectedWidth) < 0.5, `${size}: computed canvas width is ${snapshot.canvasCss.width}`)
+  assert.ok(Math.abs(snapshot.canvasCss.height - expectedHeight) < 0.5, `${size}: computed canvas height is ${snapshot.canvasCss.height}`)
+  assert.ok(
+    ['pixelated', 'crisp-edges'].includes(snapshot.canvasCss.imageRendering),
+    `${size}: canvas image-rendering is ${JSON.stringify(snapshot.canvasCss.imageRendering)}`,
+  )
   assert.deepEqual(snapshot.horizontalOverflow, { document: false, body: false, app: false }, `${size}: horizontal overflow detected`)
   assert.equal(snapshot.runtimeErrorVisible, false, `${size}: runtime error UI is visible`)
   assert.equal(snapshot.bootError, null, `${size}: BootScene reported an error`)
-  assert.equal(snapshot.qa.placeholderTextures?.created, 23, `${size}: expected 23 separate placeholder textures`)
+  assert.equal(snapshot.qa.pixelTextures?.temporary, false, `${size}: runtime still reports temporary art`)
+  assert.equal(snapshot.qa.pixelTextures?.created, 131, `${size}: v0.8 pixel texture inventory changed unexpectedly`)
+  assert.equal(snapshot.qa.pixelTextures?.nonEmpty, 131, `${size}: one or more pixel textures rendered empty`)
+  assert.equal(snapshot.qa.pixelTextures?.grid, 8, `${size}: pixel texture grid is not 8px`)
+  assert.equal(snapshot.qa.pixelWorld?.zoom, 2, `${size}: world camera zoom is not the fixed 2× contract`)
+  assert.equal(snapshot.qa.pixelWorld?.grid, 8, `${size}: world grid is not the fixed 8px contract`)
+  assert.ok(snapshot.qa.room?.behavior, `${size}: cat behavior diagnostics are unavailable`)
+  assert.ok(Number.isFinite(snapshot.qa.room.behavior.clock), `${size}: cat behavior clock is not finite`)
+  assert.equal(snapshot.qa.room?.camera?.width, expectedWidth, `${size}: room camera width does not match the viewport`)
+  assert.equal(snapshot.qa.room?.camera?.height, expectedHeight, `${size}: room camera height does not match the viewport`)
+  assert.equal(snapshot.qa.room?.camera?.zoom, 2, `${size}: room camera is not using 2× zoom`)
+  assert.equal(snapshot.qa.room?.visibility?.toy, true, `${size}: room toy remained hidden outside its catch frame`)
+  assertPlainBounds(snapshot.qa.room?.bounds?.cat, `${size}: cat`)
+  for (const name of ['bed', 'bowl', 'toy', 'window']) {
+    assertPlainBounds(snapshot.qa.room?.bounds?.objects?.[name], `${size}: ${name}`)
+  }
   assert.deepEqual(snapshot.gameChildTags, ['CANVAS'], `${size}: #game contains a DOM world overlay`)
   assert.equal(snapshot.legacyHotspotCount, 0, `${size}: legacy DOM hotspot selector detected`)
   assert.deepEqual(snapshot.transparentHotspots, [], `${size}: transparent DOM hotspot detected`)
+}
+
+function worldToCanvasPoint(snapshot, point, { round = true } = {}) {
+  const room = snapshot?.qa?.room
+  const camera = room?.camera
+  const rect = snapshot?.canvasRect
+  assert.ok(camera && rect, 'World-to-canvas conversion requires QA camera and canvas geometry')
+  const scaleX = rect.width / camera.width
+  const scaleY = rect.height / camera.height
+  const worldViewX = camera.scrollX + (camera.width / 2) - (camera.width / (2 * camera.zoom))
+  const worldViewY = camera.scrollY + (camera.height / 2) - (camera.height / (2 * camera.zoom))
+  const converted = {
+    x: rect.x + ((point.x - worldViewX) * camera.zoom) * scaleX,
+    y: rect.y + ((point.y - worldViewY) * camera.zoom) * scaleY,
+  }
+  return round ? { x: Math.round(converted.x), y: Math.round(converted.y) } : converted
+}
+
+function assertCoreCentersVisible(snapshot, size) {
+  const centers = snapshot.qa.room?.centers
+  const rect = snapshot.canvasRect
+  assert.ok(centers, `${size}: room center diagnostics are unavailable`)
+  const visibleCenters = {}
+
+  for (const name of REQUIRED_CORE_CENTERS) {
+    const center = centers[name]
+    assert.ok(
+      center && Number.isFinite(center.x) && Number.isFinite(center.y),
+      `${size}: ${name} has no finite world center`,
+    )
+    const point = worldToCanvasPoint(snapshot, center)
+    assert.ok(
+      point.x >= rect.x && point.x <= rect.x + rect.width
+        && point.y >= rect.y && point.y <= rect.y + rect.height,
+      `${size}: ${name} center ${JSON.stringify(point)} is outside the canvas`,
+    )
+    visibleCenters[name] = { world: center, canvas: point }
+  }
+
+  return visibleCenters
+}
+
+function assertCatBoundsVisible(snapshot, size) {
+  const bounds = assertPlainBounds(snapshot.qa.room?.bounds?.cat, `${size}: cat`)
+  const rect = snapshot.canvasRect
+
+  const topLeft = worldToCanvasPoint(snapshot, bounds, { round: false })
+  const bottomRight = worldToCanvasPoint(snapshot, { x: bounds.right, y: bounds.bottom }, { round: false })
+  assert.ok(topLeft.x >= rect.x, `${size}: cat extends beyond the left canvas edge`)
+  assert.ok(topLeft.y >= rect.y, `${size}: cat extends beyond the top canvas edge`)
+  assert.ok(bottomRight.x <= rect.x + rect.width, `${size}: cat extends beyond the right canvas edge`)
+  assert.ok(bottomRight.y <= rect.y + rect.height, `${size}: cat extends beyond the bottom canvas edge`)
+
+  return { world: bounds, canvas: { topLeft, bottomRight } }
 }
 
 function assertNoSevereLogs(logs, label) {
@@ -421,6 +537,8 @@ async function runRoomCase(size) {
     }
     result.browserLogs = await driver.browserLogs()
     assertRoomSnapshot(result.runtime, size)
+    result.coreCenters = assertCoreCentersVisible(result.runtime, size)
+    result.catBounds = assertCatBoundsVisible(result.runtime, size)
     const [expectedWidth, expectedHeight] = size.split('x').map(Number)
     assert.deepEqual(
       { width: result.screenshot.width, height: result.screenshot.height },
@@ -473,47 +591,54 @@ async function pointerSequence(points, { pointerId, pauseMs = 180 } = {}) {
   }
 }
 
-function canvasPoint(rect, designX, designY) {
-  return {
-    x: Math.round(rect.x + (designX / 393) * rect.width),
-    y: Math.round(rect.y + (designY / 852) * rect.height),
-  }
-}
-
 async function runInteractionCase() {
   const result = { size: '393x852', status: 'running', steps: [] }
   report.interaction = result
   try {
     await driver.navigate(`${APP_ORIGIN}/?qa=393x852&scene=first-meeting`)
     await waitForScene('FirstMeetingScene')
+    const firstMeetingRuntime = await driver.execute(RUNTIME_SNAPSHOT)
+    assert.equal(firstMeetingRuntime.qa.scene, 'FirstMeetingScene', 'First meeting scene diagnostics are unavailable')
+    assert.equal(firstMeetingRuntime.appMode, 'first-meeting', 'First meeting DOM mode is not active')
+    assert.deepEqual(firstMeetingRuntime.layers, REQUIRED_LAYERS, 'First meeting does not use the six-layer world')
+    assert.equal(firstMeetingRuntime.qa.pixelTextures?.created, 131, 'First meeting texture inventory is incomplete')
+    result.firstMeetingCenters = assertCoreCentersVisible(firstMeetingRuntime, '393x852 first meeting')
+    result.firstMeetingCatBounds = assertCatBoundsVisible(firstMeetingRuntime, '393x852 first meeting')
     result.steps.push({ name: 'first-meeting-ready', screenshot: await driver.saveElementScreenshot('#app', 'first-meeting-ready.png') })
 
-    const canvasRect = await driver.execute(`
-      const rect = document.querySelector('#game canvas').getBoundingClientRect();
-      return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
-    `)
-    const petPath = [
-      canvasPoint(canvasRect, 177, 580),
-      { ...canvasPoint(canvasRect, 185, 590), duration: 320 },
-      { ...canvasPoint(canvasRect, 193, 602), duration: 320 },
-      { ...canvasPoint(canvasRect, 200, 613), duration: 320 },
-      { ...canvasPoint(canvasRect, 207, 624), duration: 320 },
+    const catCenter = firstMeetingRuntime.qa.room.centers.cat
+    const petWorldPath = [
+      { x: catCenter.x - 10, y: catCenter.y - 32 },
+      { x: catCenter.x - 5, y: catCenter.y - 33 },
+      { x: catCenter.x, y: catCenter.y - 34 },
+      { x: catCenter.x + 5, y: catCenter.y - 33 },
+      { x: catCenter.x + 10, y: catCenter.y - 32 },
     ]
+    const petPath = petWorldPath.map((point, index) => ({
+      ...worldToCanvasPoint(firstMeetingRuntime, point),
+      ...(index ? { duration: 340 } : {}),
+    }))
     await pointerSequence(petPath, { pointerId: 'petting-finger', pauseMs: 220 })
     await waitFor('name panel after slow petting', () => driver.execute(visibleScript('#namePanel')))
     assert.equal(await driver.execute(visibleScript('#namePanel')), true, 'Slow touch drag did not open the name panel')
     result.steps.push({ name: 'name-panel-open', screenshot: await driver.saveElementScreenshot('#app', 'first-meeting-name-panel.png') })
 
+    result.defaultName = await driver.execute("return document.querySelector('#petNameInput')?.value || null;")
+    assert.equal(result.defaultName, 'こむぎ', 'The name panel did not preserve the default cat name')
     await driver.click(await driver.find('#startLife'))
     await waitForScene('RoomScene')
     assert.equal(await driver.execute("return document.querySelector('#app')?.dataset.mode;"), 'room', 'Start button did not enter room mode')
+    assert.equal(
+      await driver.execute("return document.querySelector('#petNameTitle')?.textContent?.trim() || null;"),
+      'こむぎ',
+      'Starting without edits did not use the default cat name',
+    )
     result.steps.push({ name: 'room-after-start', screenshot: await driver.saveElementScreenshot('#app', 'first-meeting-room.png') })
 
-    const roomCanvasRect = await driver.execute(`
-      const rect = document.querySelector('#game canvas').getBoundingClientRect();
-      return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
-    `)
-    const bowlPoint = canvasPoint(roomCanvasRect, 333, 775)
+    const roomRuntime = await driver.execute(RUNTIME_SNAPSHOT)
+    assertRoomSnapshot(roomRuntime, '393x852')
+    result.roomCenters = assertCoreCentersVisible(roomRuntime, '393x852 interaction room')
+    const bowlPoint = worldToCanvasPoint(roomRuntime, roomRuntime.qa.room.centers.bowl)
     const hitTarget = await driver.execute(`
       const element = document.elementFromPoint(arguments[0], arguments[1]);
       return element ? { tag: element.tagName, id: element.id, className: String(element.className || '') } : null;
@@ -523,14 +648,152 @@ async function runInteractionCase() {
     await waitFor('food sheet after bowl tap', () => driver.execute(visibleScript('#foodSheet')))
     assert.equal(await driver.execute(visibleScript('#foodSheet')), true, 'Touching the bowl did not open the food sheet')
     result.steps.push({ name: 'food-sheet-open', screenshot: await driver.saveElementScreenshot('#app', 'room-food-sheet.png') })
-    result.runtime = await driver.execute(RUNTIME_SNAPSHOT)
+
+    await driver.click(await driver.find('#foodSheet [data-close]'))
+    await waitFor('food sheet close', async () => !(await driver.execute(visibleScript('#foodSheet'))))
+    const playRuntime = await driver.execute(RUNTIME_SNAPSHOT)
+    const bedPoint = worldToCanvasPoint(playRuntime, playRuntime.qa.room.centers.bed)
+    await pointerSequence([bedPoint], { pointerId: 'bed-finger', pauseMs: 160 })
+    await waitFor('bed touch feedback', () => driver.execute(`
+      const toast = document.querySelector('#toast');
+      return !toast?.hidden && /寝床|眠/.test(toast?.textContent || '');
+    `))
+    result.steps.push({ name: 'bed-touch-feedback' })
+
+    const toyPoint = worldToCanvasPoint(playRuntime, playRuntime.qa.room.centers.toy)
+    const toyHitTarget = await driver.execute(`
+      const element = document.elementFromPoint(arguments[0], arguments[1]);
+      return element ? { tag: element.tagName, id: element.id, className: String(element.className || '') } : null;
+    `, [toyPoint.x, toyPoint.y])
+    assert.equal(toyHitTarget?.tag, 'CANVAS', `Toy coordinate is covered by ${JSON.stringify(toyHitTarget)}`)
+    await pointerSequence([toyPoint], { pointerId: 'toy-finger', pauseMs: 160 })
+    await waitFor('player toy sequence', () => driver.execute(`
+      return window.__TAIL_ROOM_QA__?.room?.behavior?.action === 'player-play';
+    `), { timeoutMs: 8_000 })
+
+    const observedMotion = new Set()
+    let playStarted = false
+    let pounceScreenshot = null
+    let catchScreenshot = null
+    const playDeadline = Date.now() + 12_000
+    while (Date.now() < playDeadline) {
+      const playDiagnostic = await driver.execute(`
+        const room = window.__TAIL_ROOM_QA__?.room;
+        return room ? { behavior: room.behavior || null, toyVisible: room.visibility?.toy } : null;
+      `)
+      const behavior = playDiagnostic?.behavior
+      if (behavior?.action === 'player-play') {
+        playStarted = true
+        if (behavior.state) observedMotion.add(behavior.state)
+        if (behavior.state === 'play-pounce' && !pounceScreenshot) {
+          pounceScreenshot = await driver.saveElementScreenshot('#app', 'room-toy-pounce.png')
+        }
+        if (behavior.state === 'play-catch' && !catchScreenshot) {
+          assert.equal(playDiagnostic.toyVisible, false, 'Room toy must hide while the cat carries its caught toy')
+          catchScreenshot = await driver.saveElementScreenshot('#app', 'room-toy-catch.png')
+        }
+      } else if (playStarted) {
+        break
+      }
+      await sleep(100)
+    }
+    const expectedMotion = ['walk', 'play-notice', 'play-crouch', 'play-pounce', 'play-catch', 'play-recover']
+    assert.deepEqual(
+      expectedMotion.filter(state => !observedMotion.has(state)),
+      [],
+      `Toy sequence omitted states: ${expectedMotion.filter(state => !observedMotion.has(state)).join(', ')}`,
+    )
+    assert.ok(pounceScreenshot, 'Toy sequence never produced screenshot evidence for play-pounce')
+    assert.ok(catchScreenshot, 'Toy sequence never produced screenshot evidence for play-catch')
+    assert.equal(
+      await driver.execute('return window.__TAIL_ROOM_QA__?.room?.visibility?.toy;'),
+      true,
+      'Room toy was not restored after the play sequence',
+    )
+    result.toySequence = {
+      states: [...observedMotion],
+      screenshots: { pounce: pounceScreenshot, catch: catchScreenshot },
+      roomToyRestored: true,
+    }
+
+    await driver.click(await driver.find('#creatorButton'))
+    await waitFor('creator sheet before forced sleep', () => driver.execute(visibleScript('#creatorSheet')))
+
+    const sleepDeadlineMs = 12_000
+    const sleepStartedAt = Date.now()
+    result.sleepSequence = {
+      deadlineMs: sleepDeadlineMs,
+      trigger: 'creator debug sleep',
+      transitions: [],
+      status: 'running',
+    }
+    await driver.click(await driver.find('#creatorSheet [data-debug="sleep"]'))
+
+    let previousSleepState = null
+    let sleepScreenshot = null
+    let sleepRuntime = null
+    while (Date.now() - sleepStartedAt < sleepDeadlineMs) {
+      const diagnostic = await driver.execute(`
+        const room = window.__TAIL_ROOM_QA__?.room;
+        return room ? {
+          behavior: room.behavior ? { ...room.behavior } : null,
+          catCenter: room.centers?.cat ? { ...room.centers.cat } : null,
+          catBounds: room.bounds?.cat ? { ...room.bounds.cat } : null,
+        } : null;
+      `)
+      const state = diagnostic?.behavior?.action === 'sleep' ? diagnostic.behavior.state : null
+      if (state && state !== previousSleepState) {
+        result.sleepSequence.transitions.push({
+          elapsedMs: Date.now() - sleepStartedAt,
+          ...diagnostic,
+        })
+        previousSleepState = state
+      }
+      if (state === 'sleep-curl') {
+        result.sleepSequence.reachedAtMs = Date.now() - sleepStartedAt
+        sleepRuntime = await driver.execute(RUNTIME_SNAPSHOT)
+        sleepScreenshot = await driver.saveElementScreenshot('#app', 'room-sleep-curl.png')
+        break
+      }
+      await sleep(50)
+    }
+
+    const expectedSleepStates = ['walk', 'sleep-curl-transition', 'sleep-curl']
+    const observedSleepStates = result.sleepSequence.transitions.map(entry => entry.behavior.state)
+    let observedIndex = -1
+    for (const expectedState of expectedSleepStates) {
+      observedIndex = observedSleepStates.indexOf(expectedState, observedIndex + 1)
+      assert.notEqual(observedIndex, -1, `Forced sleep sequence did not reach ${expectedState} in order`)
+    }
+    assert.ok(sleepRuntime, `Forced sleep did not reach sleep-curl within ${sleepDeadlineMs}ms`)
+    assert.equal(sleepRuntime.qa.room.behavior.action, 'sleep', 'Sleep screenshot was not captured during the sleep action')
+    assert.equal(sleepRuntime.qa.room.behavior.state, 'sleep-curl', 'Sleep screenshot was not captured on the curl loop')
+    assert.deepEqual(
+      { width: sleepScreenshot.width, height: sleepScreenshot.height },
+      { width: 393, height: 852 },
+      'Sleep-curl screenshot does not match the 393x852 app bounds',
+    )
+    result.sleepSequence.status = 'passed'
+    result.sleepSequence.completedAtMs = Date.now() - sleepStartedAt
+    result.sleepSequence.screenshot = sleepScreenshot
+    result.sleepSequence.finalBehavior = sleepRuntime.qa.room.behavior
+    result.sleepSequence.catBounds = assertCatBoundsVisible(sleepRuntime, '393x852 sleep-curl')
+    result.steps.push({ name: 'forced-sleep-curl', screenshot: sleepScreenshot })
+
+    result.runtime = sleepRuntime
     result.browserLogs = await driver.browserLogs()
     assertRoomSnapshot(result.runtime, '393x852')
+    result.finalCenters = assertCoreCentersVisible(result.runtime, '393x852 interaction final')
+    result.finalCatBounds = assertCatBoundsVisible(result.runtime, '393x852 interaction final')
     assertNoSevereLogs(result.browserLogs, 'first-meeting interaction')
     result.status = 'passed'
   } catch (error) {
     result.status = 'failed'
     result.error = error.stack || String(error)
+    if (result.sleepSequence?.status === 'running') {
+      result.sleepSequence.status = 'failed'
+      result.sleepSequence.error = result.error
+    }
     try {
       result.failureScreenshot = await driver.savePageScreenshot('interaction-failure.png')
     } catch {
