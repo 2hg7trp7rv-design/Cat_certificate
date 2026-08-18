@@ -194,6 +194,10 @@ class WebDriverClient {
     return this.command('POST', '/execute/sync', { script, args })
   }
 
+  executeAsync(script, args = []) {
+    return this.command('POST', '/execute/async', { script, args }, { timeoutMs: 30_000 })
+  }
+
   async find(selector) {
     const element = await this.command('POST', '/element', { using: 'css selector', value: selector })
     assert.ok(element?.[ELEMENT_KEY], `WebDriver could not find ${selector}`)
@@ -341,6 +345,28 @@ const RUNTIME_SNAPSHOT = `
 
 async function waitForScene(scene) {
   try {
+    const uiFontLoad = await driver.executeAsync(`
+      const done = arguments[arguments.length - 1];
+      if (!document.fonts) {
+        done({ error: 'CSS Font Loading API is unavailable', matchCounts: [], statuses: [] });
+      } else {
+        Promise.all([
+          document.fonts.load('400 16px "Tail Room JP"', '日本語'),
+          document.fonts.load('700 16px "Tail Room JP"', '日本語'),
+        ]).then(groups => done({
+          error: null,
+          matchCounts: groups.map(group => group.length),
+          statuses: groups.map(group => group.map(face => face.status)),
+        })).catch(error => done({
+          error: error?.message || String(error),
+          matchCounts: [],
+          statuses: [],
+        }));
+      }
+    `)
+    assert.equal(uiFontLoad.error, null, `Bundled Japanese UI font load failed: ${uiFontLoad.error}`)
+    assert.deepEqual(uiFontLoad.matchCounts, [1, 1], 'Bundled Japanese UI font faces did not match both weights')
+    assert.deepEqual(uiFontLoad.statuses, [['loaded'], ['loaded']], 'Bundled Japanese UI font faces did not finish loading')
     return await waitFor(`${scene} WebGL readiness`, () => driver.execute(`
       const uiFontFaces = document.fonts
         ? [...document.fonts].filter(face => face.family.replace(/["']/g, '') === 'Tail Room JP')
