@@ -80,7 +80,6 @@ export class Cat extends Phaser.GameObjects.Container {
     scene.add.existing(this)
     this.setScale(scale)
     this.setSize(96, 96)
-    this.setDisplayOrigin(48, 88)
     const hitArea = alignCenteredHitArea(
       new Phaser.Geom.Polygon(CAT_HIT_POLYGON),
       this.displayOriginX,

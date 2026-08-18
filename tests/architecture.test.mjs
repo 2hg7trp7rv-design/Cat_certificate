@@ -212,6 +212,11 @@ test('Container hit areas account for Phaser display origins', async () => {
   assert.match(combined, /alignCenteredHitArea/)
   assert.equal((combined.match(/this\.displayOriginX/g) || []).length >= 2, true)
   assert.equal((combined.match(/this\.displayOriginY/g) || []).length >= 2, true)
+  assert.doesNotMatch(
+    combined,
+    /this\.setDisplayOrigin\s*\(/,
+    'Phaser 4 Containers do not implement setDisplayOrigin; translate their hit geometry instead',
+  )
 })
 
 test('debug scene uses the Phaser 4 SceneManager API', async () => {
