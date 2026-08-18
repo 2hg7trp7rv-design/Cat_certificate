@@ -263,6 +263,9 @@ const RUNTIME_SNAPSHOT = `
   const appRect = app?.getBoundingClientRect();
   const canvasRect = canvas?.getBoundingClientRect();
   const canvasStyle = canvas ? getComputedStyle(canvas) : null;
+  const uiFontFaces = document.fonts
+    ? [...document.fonts].filter(face => face.family.replace(/["']/g, '') === 'Tail Room JP')
+    : [];
   let gl = null;
   let webgl = null;
   if (canvas) {
@@ -313,6 +316,14 @@ const RUNTIME_SNAPSHOT = `
       imageRendering: canvasStyle.imageRendering,
     } : null,
     canvasCount: document.querySelectorAll('#game canvas').length,
+    uiFont: {
+      setStatus: document.fonts?.status || null,
+      computedFamily: app ? getComputedStyle(app).fontFamily : null,
+      faces: uiFontFaces.map(face => ({ family: face.family, weight: face.weight, status: face.status })),
+      loaded: document.fonts?.status === 'loaded'
+        && uiFontFaces.length === 2
+        && uiFontFaces.every(face => face.status === 'loaded'),
+    },
     webgl,
     runtimeErrorVisible: runtimeError ? visible(runtimeError) : true,
     bootError: qa.bootError || null,
@@ -331,11 +342,17 @@ const RUNTIME_SNAPSHOT = `
 async function waitForScene(scene) {
   try {
     return await waitFor(`${scene} WebGL readiness`, () => driver.execute(`
+      const uiFontFaces = document.fonts
+        ? [...document.fonts].filter(face => face.family.replace(/["']/g, '') === 'Tail Room JP')
+        : [];
       return Boolean(
         window.__TAIL_ROOM_READY__ === true &&
         window.__TAIL_ROOM_QA__?.ready === true &&
         window.__TAIL_ROOM_QA__?.renderer === 'webgl' &&
-        window.__TAIL_ROOM_QA__?.scene === ${JSON.stringify(scene)}
+        window.__TAIL_ROOM_QA__?.scene === ${JSON.stringify(scene)} &&
+        document.fonts?.status === 'loaded' &&
+        uiFontFaces.length === 2 &&
+        uiFontFaces.every(face => face.status === 'loaded')
       );
     `), { timeoutMs: 30_000 })
   } catch (error) {
@@ -351,6 +368,11 @@ async function waitForScene(scene) {
         scene: qa.scene || null,
         bootError: qa.bootError || null,
         contextLost: qa.contextLost === true,
+        uiFonts: document.fonts ? [...document.fonts].map(face => ({
+          family: face.family,
+          weight: face.weight,
+          status: face.status,
+        })) : [],
       };
     `).catch(diagnosticError => ({ diagnosticError: diagnosticError.message }))
     const browserLogs = await driver.browserLogs().catch(diagnosticError => ([{
@@ -416,6 +438,8 @@ function assertRoomSnapshot(snapshot, size) {
   assert.equal(snapshot.qa.scene, 'RoomScene', `${size}: RoomScene is not active`)
   assert.equal(snapshot.appMode, 'room', `${size}: DOM UI is not in room mode`)
   assert.equal(snapshot.canvasCount, 1, `${size}: expected exactly one Phaser canvas`)
+  assert.equal(snapshot.uiFont?.loaded, true, `${size}: bundled Japanese UI fonts did not load`)
+  assert.match(snapshot.uiFont?.computedFamily || '', /^"?Tail Room JP"?/, `${size}: bundled UI font is not first in the font stack`)
   assert.ok(snapshot.appRect, `${size}: #app has no measurable bounds`)
   assert.ok(snapshot.canvasRect, `${size}: the Phaser canvas has no measurable bounds`)
   assert.ok(snapshot.canvasAttributes, `${size}: the Phaser canvas has no bitmap dimensions`)

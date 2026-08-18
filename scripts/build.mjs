@@ -16,6 +16,9 @@ const required = [
   'vendor/phaser-4.2.1/LICENSE.md',
   'public/assets/favicon.png',
   'public/assets/tail-room-icon.png',
+  'public/assets/fonts/noto-sans-jp-400.ttf',
+  'public/assets/fonts/noto-sans-jp-700.ttf',
+  'public/assets/fonts/OFL.txt',
   'robots.txt',
   'vercel.json'
 ]

@@ -1,3 +1,19 @@
+@font-face {
+  font-family: "Tail Room JP";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../assets/fonts/noto-sans-jp-400.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Tail Room JP";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("../assets/fonts/noto-sans-jp-700.ttf") format("truetype");
+}
+
 :root {
   --cream-50: #fff8e8;
   --cream-100: #f7e9c7;
@@ -16,7 +32,7 @@
   --night: #26384b;
   --ink-muted: #716052;
   --pixel-shadow: 0 4px 0 var(--cocoa-900);
-  font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", "YuGothic", sans-serif;
+  font-family: "Tail Room JP", -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", "YuGothic", sans-serif;
   color: var(--cocoa-900);
   background: #121a20;
   color-scheme: light;
