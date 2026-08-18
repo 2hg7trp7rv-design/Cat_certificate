@@ -6,7 +6,7 @@
 
 **[docs/WORK_HANDOFF.md](docs/WORK_HANDOFF.md)**
 
-この文書が、商品方針、技術方針、現行コード、禁止事項、次の作業順序をまとめた最優先資料です。v0.8の検証境界と確定前の証拠欄は[docs/V08_VALIDATION.md](docs/V08_VALIDATION.md)に分離しています。
+この文書が、商品方針、技術方針、現行コード、禁止事項、次の作業順序をまとめた最優先資料です。v0.8の確定証拠と実機未検証の境界は[docs/V08_VALIDATION.md](docs/V08_VALIDATION.md)に分離しています。
 
 ## 現在の状態
 
@@ -19,7 +19,11 @@
 - 部屋、影、家具、猫、前景、光の6レイヤーと131個の独立テクスチャ
 - 猫は21状態・113フレーム。20〜65秒間隔の自主行動、丸寝・横寝、休息、窓観察、一人遊びを実装
 - DOM UIはpaper cream、walnut、sage、deep tealを基調とする温かい不透明パネルへ刷新
+- 日本語UIは同梱した`Tail Room JP` 400／700を使用し、CIで両weightのloadを確認
 - 保存データは`version: 6`と`tail-room-state-v6`を維持
+- runtime／evidence SHA: `0358b05bd2888ef4afa7951d924e95ababda654f`
+- Quality Gate: [Run 52](https://github.com/2hg7trp7rv-design/Cat_room/actions/runs/32096447738) `completed / success`
+- Vercel: deployment `dpl_CB63B9ksMX3YQrF2LceQLpx1QSfv`、`READY / production`
 
 ## v0.8で作り直したこと
 
@@ -37,10 +41,12 @@
 
 ## 検証上の線引き
 
-現時点で確定しているのは、リポジトリ内のv0.8ソースと構造、およびローカル品質ゲート（41 JavaScript構文検査・47テスト）の合格です。最新コミットに対するGitHub Actions WebGL smoke、Vercel productionのREADY／HTTP 200、公開画面PNGは、実際の結果を取得してから合格と記録します。
+v0.8は**実装＋CIソフトウェアWebGLゲート合格**です。SHA `0358b05bd2888ef4afa7951d924e95ababda654f`に対し、`npm run check`（41 JavaScript構文検査・47 tests）、GitHub Actions Quality Gate Run 52、320×667／393×852／430×932のWebGL smokeとPNGが合格しました。131 texturesはすべてnon-empty、6 layerの順序、横overflowなし、初回導線、食事、寝床、玩具、睡眠sequenceも確認済みです。
 
-CIのChrome＋ANGLE SwiftShaderが合格しても、実iPhone、iOS Safari、実GPUの性能を証明したことにはなりません。物理iPhoneでの初回導線、タッチ、夜間視認性、バックグラウンド復帰、目標60fps／最低30fpsは未検証です。
+同じSHAのVercel deployment `dpl_CB63B9ksMX3YQrF2LceQLpx1QSfv`は`READY / production`で、正本URLはHTTP 200を返しました。詳細、artifact ID／digest、失敗履歴は[docs/V08_VALIDATION.md](docs/V08_VALIDATION.md)を参照してください。
+
+CIはChrome 151＋ANGLE SwiftShaderによるソフトウェアWebGLです。合格しても、実iPhone、iOS Safari、実GPUの性能を証明したことにはなりません。物理iPhoneでの初回導線、タッチ、夜間視認性、バックグラウンド復帰、目標60fps／最低30fpsは`NOT TESTED`です。
 
 ## 次工程
 
-ローカル`npm run check`の合格を、GitHub Actions WebGL smoke、3画面サイズのPNG、Vercel productionとv0.8の対象SHAへ結び付けます。その後、最低1台の実iPhoneで実機ゲートを閉じ、v0.9の部位別撫で反応へ進みます。
+最低1台の実iPhoneで実機ゲートを先に閉じます。iOS Safari、入力位置、夜間視認性、バックグラウンド復帰、実GPU fpsを記録した後、v0.9の部位別撫で反応へ進みます。

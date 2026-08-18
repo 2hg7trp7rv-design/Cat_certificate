@@ -4,7 +4,7 @@
 
 ## Current
 
-Creator Preview 0.8.0のピクセルアート、猫のmotion、温かいDOM UIはリポジトリ上で再構築済みです。現時点では**source／structure checkpoint**であり、最新SHAに対するCI WebGLとVercel productionの結果は確定前です。
+Creator Preview 0.8.0のピクセルアート、猫のmotion、温かいDOM UIはリポジトリ上で再構築済みです。SHA `0358b05bd2888ef4afa7951d924e95ababda654f`に対するGitHub ActionsとVercelの証拠を取得し、現在は**実装＋CIソフトウェアWebGLゲート合格**です。物理iPhone、iOS Safari、実GPUのhardware gateは未完です。
 
 最優先資料: [WORK_HANDOFF.md](WORK_HANDOFF.md)
 
@@ -46,27 +46,27 @@ Creator Preview 0.8.0のピクセルアート、猫のmotion、温かいDOM UI�
 |---|---|---|
 | v0.8 source／structure | 実装済み | 131 textures、21 states／113 frames、6 layers |
 | `npm run check` | 合格 | exit 0、41 JavaScript構文検査、47 tests pass |
-| GitHub commit SHA | 確定待ち | push後に記録する |
-| GitHub Actions Quality Gate | 確定待ち | run番号、URL、結果を実測後に記録する |
-| CI WebGL 3-size PNG | 確定待ち | 320×667、393×852、430×932 |
-| Vercel deployment | 確定待ち | deployment ID、READY、対象SHAを実測後に記録する |
-| Canonical URL HTTP 200 | 確定待ち | `https://cat-certificate.vercel.app` |
-| 物理iPhone／iOS Safari | 未実施 | 実機確認済みと書かない |
-| 実GPU 60fps目標／30fps下限 | 未実施 | CI SwiftShader値を性能判定へ使わない |
+| Runtime／evidence SHA | 確定 | `0358b05bd2888ef4afa7951d924e95ababda654f` |
+| GitHub Actions Quality Gate | 合格 | [Run 52](https://github.com/2hg7trp7rv-design/Cat_room/actions/runs/32096447738)、job `95588640609`、`completed / success` |
+| CI WebGL 3-size PNG | 合格 | Chrome 151＋SwiftShader、320×667、393×852、430×932、全サイズ横overflowなし |
+| CI interaction | 合格 | 初回撫で→既定名`こむぎ`→Room、food、bed、toy、sleep |
+| Smoke artifact | 取得済み | ID `9310114629`、`tail-room-v0.8-webgl-smoke`、2026-11-16 03:42:32 UTCまで |
+| Vercel deployment | 合格 | `dpl_CB63B9ksMX3YQrF2LceQLpx1QSfv`、同じSHA、`READY / production`、`aliasError: null` |
+| Canonical URL HTTP 200 | 合格 | `https://cat-certificate.vercel.app`、title `Tail Room — Creator Preview 0.8` |
+| 物理iPhone／iOS Safari | `NOT TESTED` | 実機確認済みと書かない |
+| 実GPU 60fps目標／30fps下限 | `NOT TESTED` | CI SwiftShader値を性能判定へ使わない |
+
+Run 52のartifactでは、131／131 texturesがnon-empty、`temporary: false`、6 layerの順序、日本語`Tail Room JP` 400／700のloadを確認した。詳細なdigest、各interaction、Vercel応答は[V08_VALIDATION.md](V08_VALIDATION.md)を参照する。
 
 ## Next gate
 
-1. 最終共有treeで`npm ci`と`npm run check`を実行
-2. `main`へ反映した正確なSHAを記録
-3. Quality GateのWebGL smokeと3画面サイズPNGを確認
-4. Vercel deploymentが同じSHAでREADYとなり、正本URLがHTTP 200であることを確認
-5. 最低1台の実iPhone Safariで初回導線、RoomScene、夜間の顔、入力位置、復帰を確認
-6. 実GPUで目標60fps／最低30fpsを計測し、機種、iOS版、測定方法、PNGを記録
-7. 実機ゲートを閉じた後、v0.9の部位別撫で反応へ進む
+1. 最低1台の実iPhone Safariで初回導線、RoomScene、夜間の顔、入力位置、復帰を確認
+2. 実GPUで目標60fps／最低30fpsを計測し、機種、iOS版、測定方法、画面証拠を記録
+3. 実機ゲートを閉じた後、v0.9の部位別撫で反応へ進む
 
 ## Not complete
 
-- v0.8 latest SHAのCI WebGL／Vercel証拠
+- 物理iPhone、iOS Safari、実GPUによるv0.8 hardware gate
 - 最終商品アートの描き込みと毛柄展開
 - 撫でている最中の部位別身体反応、拒否、音、触覚
 - 食事の接近、匂い、咀嚼、食事量アニメーション

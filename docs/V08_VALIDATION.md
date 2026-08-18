@@ -5,11 +5,11 @@
 
 ## 1. 判定
 
-現在の判定は**source／structureとローカル品質ゲート合格、release evidence確定待ち**。
+現在の判定は**実装＋CIソフトウェアWebGLゲート合格、実機ゲート未完**。
 
-v0.8のピクセル描画、猫motion、behavior controller、温かいDOM UIは共有treeへ実装され、ローカル`node scripts/check.mjs`はexit 0で41 JavaScript構文検査・47 testsに合格した。最新SHAのGitHub Actions WebGL smoke、Vercel production、公開PNGは、実際の結果を取得して本書へ記録するまで合格と扱わない。
+v0.8のピクセル描画、猫motion、behavior controller、温かいDOM UIはruntime／evidence SHA `0358b05bd2888ef4afa7951d924e95ababda654f`へ実装済み。`node scripts/check.mjs`はexit 0で41 JavaScript構文検査・47 tests、GitHub Actions Quality Gate Run 52は`completed / success`、同じSHAのVercel productionは`READY`となった。Run 52のartifactからreportとPNGも取得済み。
 
-物理iPhone、iOS Safari、実GPU性能は未検証。CIのソフトウェアWebGLが合格しても実機確認の代わりにはならない。
+物理iPhone、iOS Safari、hardware GPU性能は`NOT TESTED`。CIのChrome 151＋ANGLE SwiftShaderによるソフトウェアWebGL合格は、実機確認や実GPU fpsの代わりにはならない。
 
 ## 2. Source contract
 
@@ -29,6 +29,8 @@ v0.8のピクセル描画、猫motion、behavior controller、温かいDOM UIは
 | Save schema | version 6 | `src/state.js` |
 | LocalStorage key | `tail-room-state-v6` | `src/state.js` |
 
+`docs/art/v08-room-concept.png`と`docs/art/v08-cat-pose-reference.png`は画像生成を用いたvisual direction資料であり、runtimeへ貼る素材ではない。runtimeの部屋、家具、猫、影、光は131個の分離textureとして生成され、concept／reference画像を背景へ焼き込んでいない。
+
 ### Cat states
 
 `idle`, `blink`, `ear`, `look`, `tail`, `stand`, `sit`, `loaf`, `lie`, `walk`, `turn`, `sleep-curl-transition`, `sleep-curl`, `sleep-side-transition`, `sleep-side`, `play-notice`, `play-crouch`, `play-pounce`, `play-catch`, `play-recover`, `welcome`。
@@ -44,38 +46,49 @@ v0.8のピクセル描画、猫motion、behavior controller、温かいDOM UIは
 
 ## 3. Automated evidence
 
-以下はroot作業者が最終treeをpush・検証した後に、推測せず実値を記入する。
-
-| Evidence | Required value | Current |
+| Evidence | Result | Measured value |
 |---|---|---|
-| GitHub commit | full SHA | `PENDING` |
-| Local quality gate | exit 0、test数 | exit 0、41 JavaScript、47 tests pass |
-| Quality Gate | run番号、URL、conclusion | `PENDING` |
-| WebGL renderer | active WebGL、Canvas 1個、fallbackなし | `PENDING` |
-| Pixel manifest | 131 created、temporary 0 | `PENDING` |
-| Layer order | 6層の正確な順序 | `PENDING` |
-| First meeting | ゆっくり撫でる → 名前パネル表示 → 既定名で開始 → RoomScene | `PENDING` |
-| Room input | cat、food、bed、toyのCanvas形状判定 | `PENDING` |
-| 320×667 | 寸法、横scroll、PNG | `PENDING` |
-| 393×852 | 寸法、夜間、PNG | `PENDING` |
-| 430×932 | 寸法、横scroll、PNG | `PENDING` |
-| Static build artifact | artifact名、取得可否 | `PENDING` |
+| Runtime／evidence commit | 確定 | `0358b05bd2888ef4afa7951d924e95ababda654f` |
+| Local／CI quality gate | 合格 | exit 0、41 JavaScript構文検査、47 tests pass |
+| Quality Gate | 合格 | [Run 52](https://github.com/2hg7trp7rv-design/Cat_room/actions/runs/32096447738)、job `95588640609`、`completed / success` |
+| WebGL renderer | 合格 | Chrome `151.0.7922.108`、WebGL 1、ANGLE SwiftShader、Canvas 1個、context lostなし、fallbackなし |
+| Pixel manifest | 合格 | 131 created、131 non-empty、0 reused、`temporary: false` |
+| Layer order | 合格 | room、shadow、furniture、cat、foreground、light |
+| Japanese UI font | 合格 | `Tail Room JP` 400／700、両face `loaded` |
+| First meeting | 合格 | ゆっくり撫でる → 名前panel → 既定名`こむぎ` → RoomScene |
+| Room input | 合格 | cat、food sheet、bed touch feedback、toyをCanvas上の位置から操作 |
+| Toy sequence | 合格 | walk → notice → crouch → pounce → catch → recover → sit、完了後にroom toyを復元 |
+| Sleep sequence | 合格 | walk → curl transition → curl、12秒deadlineに対し2,949msでcurl到達 |
+| 320×667 | 合格 | Canvas 320×667、横overflowなし、`room-320x667.png` |
+| 393×852 | 合格 | Canvas 393×852、横overflowなし、昼／夜PNGとinteraction PNG |
+| 430×932 | 合格 | Canvas 430×932、横overflowなし、`room-430x932.png` |
+| Smoke artifact | 取得済み | ID `9310114629`、`tail-room-v0.8-webgl-smoke` |
 
-GitHub Actions artifactは`tail-room-v0.8-webgl-smoke`、ローカル出力先は`artifacts/v0.8/`を契約名とする。実際のartifact IDとURLはrun完了後に追記する。
+Artifact digestは`sha256:072eab5dda7ab62a6f1f323442dc83f5ff7338dff287ee6b55e331fe08d7d153`、expires atは`2026-11-16T03:42:32Z`。ローカル出力先の契約名は`artifacts/v0.8/`である。
 
 3サイズ検査は、1200×1100のdesktop headless Chrome内で`#app`とCanvasを320×667、393×852、430×932へ固定し、要素単位のPNGを取得する。mobile viewport、mobile UA、DPR、iPhone emulationではないため、実機相当の証拠には使わない。
 
+### Failure history
+
+- Run 48: 静的checkは通過したが、Phaser 4のContainerに存在しない`setDisplayOrigin()`を`Cat`から呼び、scene遷移時に例外となってWebGL smokeが失敗した。呼び出しを削除し、Container entityでの再使用を禁じるarchitecture testを追加した
+- Run 49: 日本語screenshot font setupがGitHub runnerのapt mirrorで停止し、2回目のattemptも含めて最終的に`cancelled`となった
+- Run 50: apt取得へtimeoutを追加したがsetupを完了できず、`failure`となった。`Tail Room JP`をリポジトリへ同梱し、workflowからapt依存を除去した
+- Run 51: 同梱fontの400／700を両方`loaded`と判定する一方、未使用の400を明示ロードしていなかったため、Room 3ケースが30秒timeoutした。`document.fonts.load()`で両weightを先に読み込み、match数とstatusを検査するよう修正した
+- 上記runは合格証拠へ含めない。最終判定はRun 52のreportとartifactによる
+
 ## 4. Vercel evidence
 
-| Evidence | Required value | Current |
+| Evidence | Result | Measured value |
 |---|---|---|
-| Project | `cats-room` | project ID `prj_x77pFkTy2D8nBYq0QKDZZtV59Bz3` |
-| Deployment ID | v0.8 SHA対応 | `PENDING` |
-| Deployment state | READY / production | `PENDING` |
-| Canonical URL | `https://cat-certificate.vercel.app` | HTTP status `PENDING` |
-| Served revision | GitHub SHAと一致 | `PENDING` |
+| Project | 確定 | `cats-room`、project ID `prj_x77pFkTy2D8nBYq0QKDZZtV59Bz3` |
+| Deployment ID | 確定 | `dpl_CB63B9ksMX3YQrF2LceQLpx1QSfv` |
+| Deployment state | 合格 | `READY / production`、`aliasError: null` |
+| Served revision | 合格 | GitHub SHA `0358b05bd2888ef4afa7951d924e95ababda654f`と一致 |
+| Canonical URL | 合格 | `https://cat-certificate.vercel.app`、HTTP 200、title `Tail Room — Creator Preview 0.8` |
+| Bundled font | 合格 | `/assets/fonts/noto-sans-jp-400.ttf`、HTTP 200、`content-type: font/ttf` |
+| Build metadata | 合格 | `/build-meta.json`: version `0.8.0`、engine `phaser-4.2.1`、`runtimeFetches: false` |
 
-旧deploymentがREADYでもv0.8の証拠にはしない。deployment ID、GitHub SHA、正本URLの応答を同じ報告へ結び付ける。
+旧deploymentがREADYでもv0.8の証拠には使わない。上記deployment ID、runtime／evidence SHA、正本URLの応答を同じ報告へ結び付けた。
 
 ## 5. Physical-device boundary
 
@@ -107,7 +120,7 @@ GitHub Actions artifactは`tail-room-v0.8-webgl-smoke`、ローカル出力先�
 
 ## 6. Acceptance rule
 
-v0.8をrelease checkpointと呼べるのは、次をすべて満たした後だけとする。
+v0.8のsoftware release checkpointは、次の5条件をSHA `0358b05bd2888ef4afa7951d924e95ababda654f`で満たした。
 
 1. 最終treeで`npm run check`がexit 0
 2. 同一SHAのQuality Gateがsuccess
@@ -115,4 +128,4 @@ v0.8をrelease checkpointと呼べるのは、次をすべて満たした後だ�
 4. 同一SHAのVercel deploymentがREADYで正本URLがHTTP 200
 5. artifactのreportとPNGを取得して報告へ添付
 
-物理iPhoneの項目は別のhardware gateである。上記5条件を満たしても「実iPhone検証済み」「実GPU 30fps以上」とは書かない。
+物理iPhoneの項目は別のhardware gateであり、現時点では未完。上記5条件を満たしても「実iPhone検証済み」「iOS Safari検証済み」「実GPU 30fps以上」とは書かない。次のv0.9作業へ入る前に、このhardware gateを先に閉じる。
