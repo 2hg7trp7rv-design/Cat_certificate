@@ -7,6 +7,7 @@ import {
   DIRECT_ART_FILES,
   DIRECT_ART_MANIFEST,
   DIRECT_CAT_POSES,
+  DIRECT_CAT_STATE_MAP,
   DIRECT_DERIVED_TEXTURES,
 } from '../src/game/art/DirectArtManifest.js'
 
@@ -2204,16 +2205,20 @@ async function runInteractionCase() {
     }
 
     const expectedSleepStates = [
-      { state: 'walk', pose: 'standing' },
-      { state: 'sleep-curl-transition', pose: 'loaf' },
-      { state: 'sleep-curl', pose: 'curl' },
+      { state: 'walk', poses: DIRECT_CAT_STATE_MAP.walk },
+      { state: 'sleep-curl-transition', poses: DIRECT_CAT_STATE_MAP['sleep-curl-transition'] },
+      { state: 'sleep-curl', poses: DIRECT_CAT_STATE_MAP['sleep-curl'] },
     ]
     const observedSleepStates = result.sleepSequence.transitions.map(entry => entry.behavior.state)
     let observedIndex = -1
     for (const expected of expectedSleepStates) {
       observedIndex = observedSleepStates.indexOf(expected.state, observedIndex + 1)
       assert.notEqual(observedIndex, -1, `Forced sleep sequence did not reach ${expected.state} in order`)
-      assert.equal(result.sleepSequence.transitions[observedIndex].pose, expected.pose, `Sleep state ${expected.state} did not use approved pose ${expected.pose}`)
+      const observedPose = result.sleepSequence.transitions[observedIndex].pose
+      assert.ok(
+        expected.poses.includes(observedPose),
+        `Sleep state ${expected.state} used ${observedPose}, outside approved poses ${expected.poses.join(', ')}`,
+      )
     }
     assert.ok(sleepRuntime, `Forced sleep did not reach sleep-curl within ${sleepDeadlineMs}ms`)
     const bedParity = await runVisualProbe({
