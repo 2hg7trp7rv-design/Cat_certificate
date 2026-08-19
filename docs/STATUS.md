@@ -93,36 +93,37 @@ logical state map:
 
 | Evidence | Status | Note |
 |---|---|---|
-| v0.8.1 direct-art source | `PENDING` | 実装完了後にcommit SHAを固定する |
-| PNG byte parity | `PENDING` | source、public、distのSHA一致を検査する |
-| `npm run check` | `PENDING` | direct-art仕様へtest更新後に実行する |
-| GitHub Actions Quality Gate | `PENDING` | 新runのみを採用する |
-| CI WebGL 3-size PNG | `PENDING` | 320×667、393×852、430×932 |
-| Visual parity | `PENDING` | 日中背景と8 exact poseを原本と照合する |
-| Canvas interaction | `PENDING` | cat、food、bed、toy、window、pose別pet zone、caught toy anchor |
-| Save schema v6 | 維持対象 | migrationを発生させない |
-| Vercel deployment | `PENDING` | v0.8.1 SHAと一致するdeploymentを確認する |
-| Canonical URL | `PENDING` | `https://cat-certificate.vercel.app`で新revisionを確認する |
+| v0.8.1 direct-art source | `PASSED` | `ad4b58d92c23f57950c823a06125a193fbc3cb3c` |
+| PNG byte parity | `PASSED` | public、dist、productionの3 PNGが正本SHAと一致 |
+| `npm --offline run check` | `PASSED` | JavaScript 45件、tests 69／69 |
+| GitHub Actions Quality Gate | `PASSED` | Run 61、ID `32287376527`、job `96180005338`、全step success |
+| CI WebGL 3-size PNG | `PASSED` | 3サイズはDPR 1、393×852は追加でDPR 2／3のbacking／inputを検査 |
+| Visual parity | `PASSED` | 日中背景、8 exact pose、left flipを原本と照合 |
+| Canvas interaction | `PASSED` | cat slow drag、food、bed、toyを実入力。windowはCanvas hit boundsの登録・可視範囲を検査。pose別pet zoneとcaught toy anchorも検査 |
+| Save schema v6 | `PASSED` | schemaと`tail-room-state-v6`を維持 |
+| Vercel deployment | `PASSED` | `dpl_2Qjt6Eo12io6LkAMqD9uUPhxn8fH`、`READY`、`aliasError: null`、source SHA一致 |
+| Canonical URL | `PASSED` | `https://cat-certificate.vercel.app`、title v0.8.1、`/build-meta.json`、3 PNGがHTTP 200 |
 | 物理iPhone／iOS Safari | `NOT TESTED` | 実機確認済みと書かない |
 | 実GPU 60fps目標／30fps下限 | `NOT TESTED` | CI software rendererを性能判定へ使わない |
+
+smoke artifactはID `9378229129`、名称`tail-room-v0.8.1-webgl-smoke`、digest `sha256:f480afa437bad9879106c9a82c87c7aee1466f2f50ebc732c071b9717109b15b`、size 18,014,821 bytes、expiry `2026-11-17T18:26:48Z`です。`report.status=passed`で、玩具のpounce画像SHA `55eb525e392a87ffef93fb4491d097cf8cc3ea937fc78f8924521d3725888da9`とcatch画像SHA `a17345a10cced4679735b61b820b55ee3300e20c38acd5b700ed298fd632cd5c`は異なり、それぞれの状態を目視確認済みです。
+
+dist artifactはID `9378143969`、digest `sha256:92c13645d800062dea2ccaad76ff786650c93f18bb55f1b025798c8902f91cb7`、expiry `2026-08-26T18:27:00Z`です。CI環境はChrome `151.0.7922.137`、ChromeDriver `151.0.7922.138`、SwiftShaderであり、software WebGLの診断証拠に限定します。
 
 旧Quality Gate Run 54と旧Vercel deploymentはv0.8.0 procedural-art版の履歴です。v0.8.1 direct-art correctionの合格証拠には使用しません。
 
 ## Next gate
 
-1. runtimeへ配置済みの3 PNGが原本とbyte-for-byte一致することを確認し、manifestの寸法・SHA・pose rect・pivot・state mapを固定
-2. room source-space 852×1846、centered cover、LINEAR samplingへの接続を確認
-3. 6 layer、Canvas形状判定、21 logical state、保存v6の回帰確認
-4. 3対象サイズのWebGL screenshotと原本visual parityを確認
-5. 暫定`toy-floor-cover`、caught toy派生、masked bed foregroundを検証し、本格clean plateと最終専用アートを制作
-6. 猫の追加中割りを制作し、8姿勢の仮割当を段階的に解消
-7. CI、Vercel、物理iPhone、実GPUの順に検証
+1. 物理iPhone／iOS Safariで表示、入力、background復帰、実GPU fpsを検証
+2. 暫定`toy-floor-cover`、caught toy派生、masked bed foregroundを本格clean plateと最終専用アートへ置換
+3. 猫の追加中割りを制作し、8姿勢を21 logical stateへ仮割当している箇所を段階的に解消
+4. 朝、夕方、夜のsource-matched artと、食事・撫で反応を制作
 
 ## Not complete
 
 - 8姿勢以外の瞬き、耳、尻尾、呼吸、歩行周期、姿勢遷移
 - 同じroom textureの隣接床subframeによる暫定`toy-floor-cover`と、crop `510,1444,88,94`を18-point polygon clipした透明CanvasTexture `direct.toy-ball`は実装済みだが、本格clean plateと猫が持つ最終専用frameは未完成
-- crop `620,1075,232,145`を10-point polygon clipした透明CanvasTexture `direct.bed-foreground`は暫定実装済みだが、3サイズ・実機での遮蔽検証と最終専用アートは未完成。WebGL非対応のGeometryMaskは使用しない
+- crop `620,1075,232,145`を10-point polygon clipした透明CanvasTexture `direct.bed-foreground`は3サイズのCIで検証済みだが、物理実機での遮蔽検証と最終専用アートは未完成。WebGL非対応のGeometryMaskは使用しない
 - 朝、夕方、夜のdirect-art派生
 - 食事の接近、匂い、咀嚼、量減少
 - 撫でている最中の部位別身体反応、拒否、音、触覚

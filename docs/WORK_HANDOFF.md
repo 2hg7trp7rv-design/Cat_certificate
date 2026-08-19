@@ -45,17 +45,17 @@ v0.8.1の検証値と未検証境界は[`V08_VALIDATION.md`](V08_VALIDATION.md)�
 - 使用branch: `main`
 - ユーザーの明示許可なしに別repositoryや別の公開branchへ移さない
 - Work開始時に最新mainとCIを取得する
-- v0.8.1 final commit SHA: `PENDING`
-- v0.8.1 Quality Gate: `PENDING`
+- v0.8.1 validated source commit SHA: `ad4b58d92c23f57950c823a06125a193fbc3cb3c`
+- v0.8.1 Quality Gate: Run 61、ID `32287376527`、job `96180005338`、`completed / success`
 
 ### Vercel
 
 - Project name: `cats-room`
 - Project ID: `prj_x77pFkTy2D8nBYq0QKDZZtV59Bz3`
 - 制作者確認URL: `https://cat-certificate.vercel.app`
-- v0.8.1 deployment ID: `PENDING`
-- v0.8.1 deployment state: `PENDING`
-- v0.8.1 served GitHub SHA: `PENDING`
+- v0.8.1 deployment ID: `dpl_2Qjt6Eo12io6LkAMqD9uUPhxn8fH`
+- v0.8.1 deployment state: `READY`、`aliasError: null`
+- v0.8.1 served GitHub SHA: `ad4b58d92c23f57950c823a06125a193fbc3cb3c`
 
 URLが開けても、v0.8.1のcommit SHA、asset SHA、build metadataが一致するまでproduction合格とは扱わない。
 
@@ -264,7 +264,7 @@ room正本にはballが焼き込まれている。
 
 ### 寝床
 
-curl poseはscale 0.75、anchor 744,1170で寝床へ収まる。原本roomのcrop `620,1075,232,145`を10-point polygon clipした透明CanvasTexture `direct.bed-foreground`を生成し、猫より手前の`foregroundLayer`へ置く暫定遮蔽は実装済み。WebGL非対応のGeometryMaskは使わない。ただし、3サイズ・実機での遮蔽検証と最終専用アートは未完成であり、暫定CanvasTextureだけで最終完成とは扱わない。
+curl poseはscale 0.75、anchor 744,1170で寝床へ収まる。原本roomのcrop `620,1075,232,145`を10-point polygon clipした透明CanvasTexture `direct.bed-foreground`を生成し、猫より手前の`foregroundLayer`へ置く暫定遮蔽は実装済み。WebGL非対応のGeometryMaskは使わない。3サイズのCIでは遮蔽を検証済みだが、物理実機での確認と最終専用アートは未完成であり、暫定CanvasTextureだけで最終完成とは扱わない。
 
 ### 食器
 
@@ -344,22 +344,27 @@ curl poseはscale 0.75、anchor 744,1170で寝床へ収まる。原本roomのcro
 
 | Gate | Status |
 |---|---|
-| v0.8.1 source commit | `PENDING` |
-| 3 PNG source SHA | `PENDING` |
-| 3 PNG dist SHA | `PENDING` |
-| Local tests | `PENDING` |
-| GitHub Actions | `PENDING` |
-| 320×667 screenshot | `PENDING` |
-| 393×852 screenshot | `PENDING` |
-| 430×932 screenshot | `PENDING` |
-| Direct-art visual parity | `PENDING` |
-| Canvas hit位置 | `PENDING` |
-| Toy floor cover | `PENDING` |
-| Sleep placement | `PENDING` |
-| Vercel deployment | `PENDING` |
-| Canonical URL served SHA | `PENDING` |
+| v0.8.1 source commit | `PASSED` — `ad4b58d92c23f57950c823a06125a193fbc3cb3c` |
+| 3 PNG source SHA | `PASSED` — 3正本SHAと一致 |
+| 3 PNG dist SHA | `PASSED` — sourceとbyte-for-byte一致 |
+| Local tests | `PASSED` — JavaScript 45件、tests 69／69 |
+| GitHub Actions | `PASSED` — Run 61、ID `32287376527`、job `96180005338`、全step success |
+| 320×667 screenshot | `PASSED` — CSS viewport PNGを検証 |
+| 393×852 screenshot | `PASSED` — CSS viewport PNGを検証 |
+| 430×932 screenshot | `PASSED` — CSS viewport PNGを検証 |
+| DPR 1／2／3 | `PASSED` — 3サイズはDPR 1、393×852はDPR 2／3でもbacking storeとCanvas inputを検証 |
+| Direct-art visual parity | `PASSED` — 日中背景、8 exact pose、left flip |
+| Canvas hit位置 | `PASSED` — cat slow drag、food、bed、toyは実入力。windowはCanvas hit boundsの登録・可視範囲を検査 |
+| Toy floor cover | `PASSED` — pounce／catchを別frameとして検証 |
+| Sleep placement | `PASSED` — curlとbed foregroundを検証 |
+| Vercel deployment | `PASSED` — `dpl_2Qjt6Eo12io6LkAMqD9uUPhxn8fH`、`READY` |
+| Canonical URL served SHA | `PASSED` — HTTP 200、source SHA一致 |
 | 物理iPhone / iOS Safari | `NOT TESTED` |
 | 実GPU fps | `NOT TESTED` |
+
+smoke artifactはID `9378229129`、名称`tail-room-v0.8.1-webgl-smoke`、digest `sha256:f480afa437bad9879106c9a82c87c7aee1466f2f50ebc732c071b9717109b15b`、size 18,014,821 bytes、expiry `2026-11-17T18:26:48Z`、`report.status=passed`。dist artifactはID `9378143969`、digest `sha256:92c13645d800062dea2ccaad76ff786650c93f18bb55f1b025798c8902f91cb7`、expiry `2026-08-26T18:27:00Z`。
+
+CIはChrome `151.0.7922.137`、ChromeDriver `151.0.7922.138`、SwiftShaderによるsoftware WebGL診断である。物理iPhone、iOS Safari、hardware GPUの合格証拠には使用しない。
 
 「sourceへ実装した」と「CIで合格した」と「productionへ配信した」と「物理iPhoneで合格した」を混同しない。
 
@@ -367,22 +372,13 @@ curl poseはscale 0.75、anchor 744,1170で寝床へ収まる。原本roomのcro
 
 ## 11. 次のWorkが行う順序
 
-1. latest mainと作業treeを確認
-2. `DirectArtManifest.js`の3 URL、寸法、SHAを原本と照合
-3. source／public／distのbyte parityを確認
-4. local syntax、unit、architecture、camera、input、motion testを実行
-5. local WebGL smokeで3対象サイズを取得
-6. day背景と8 poseのvisual parityを確認
-7. first meetingで`IMG_3038.png`、撫で、命名、Room遷移を確認
-8. cat、food、bed、toy、windowのCanvas hitと、8 pose別head／back／tail領域の左右mirrorを確認
-9. `play-catch`時だけtoy floor coverとcaught toy派生へ切り替わり、paw anchorを左右mirrorしてball二重表示を防ぐことを確認
-10. curlがbedへ収まり、masked foregroundが自然に遮蔽することを確認。暫定実装と最終専用アートを区別して報告
-11. GitHubへ意図した変更だけをcommit・push
-12. 新しいQuality Gateの結果を確認
-13. 同じSHAをVercelへ配信
-14. canonical URL、build metadata、3 PNG responseを確認
-15. screenshot、CI run、deployment ID、SHAを揃えて報告
-16. 物理iPhoneで表示、入力、復帰、fpsを確認
+1. latest mainと作業treeを確認し、validated source SHAと本書の証拠を照合
+2. 物理iPhone／iOS SafariでFirstMeetingScene、RoomScene、Canvas hit、background復帰を確認
+3. 実GPUで目標60fps／最低30fpsを測定し、端末・iOS・Safari versionとともに記録
+4. 玩具なしclean plate、独立toy、猫が持つ最終専用frame、最終寝床アートを制作
+5. 8正本poseと同一猫の追加中割りを制作し、21 logical stateへの仮割当を段階的に解消
+6. 朝、夕方、夜のsource-matched art、食事animation、撫で反応を制作
+7. 変更ごとにlocal check、Quality Gate、Vercel、実機の順で再検証し、sourceと証拠のSHAを分けて記録
 
 旧Run 54や旧deploymentをv0.8.1の証拠欄へ入れない。
 
@@ -404,7 +400,7 @@ curl poseはscale 0.75、anchor 744,1170で寝床へ収まる。原本roomのcro
 10. canonical URLが同一revisionを配信
 11. reportとPNG artifactを保存
 
-software gateに合格しても、物理iPhone、iOS Safari、実GPUは別gate。
+validated source commit `ad4b58d92c23f57950c823a06125a193fbc3cb3c`は上記11項目を満たし、v0.8.1 software gateに`PASSED`。ただし、物理iPhone、iOS Safari、実GPUは別gateであり`NOT TESTED`。
 
 ---
 
