@@ -37,7 +37,9 @@ export const CAT_ANIMATION_SPECS = Object.freeze({
   'play-notice': animation(4, [120, 110, 120, 150]),
   'play-crouch': animation(6, [115, 110, 105, 105, 110, 135]),
   'play-pounce': animation(6, [90, 85, 80, 85, 90, 110]),
-  'play-catch': animation(6, [105, 100, 95, 105, 110, 150]),
+  // Hold the caught-toy pose long enough for a player to read the success,
+  // instead of flashing through the moment between pounce and recovery.
+  'play-catch': animation(6, [260, 250, 240, 250, 260, 340]),
   'play-recover': animation(6, [115, 110, 105, 110, 120, 150]),
   welcome: animation(5, [115, 105, 105, 115, 150]),
 })

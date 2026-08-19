@@ -3,6 +3,7 @@ import test from 'node:test'
 import {
   CatBehaviorController,
   DEFAULT_CAT_ANCHORS,
+  MOTION_DURATION_MS,
   chooseSleepPose,
   createAmbientPlan,
   deterministicUnit,
@@ -138,6 +139,7 @@ test('player play runs as one ordered action instead of overlapping ambient moti
   })
 
   assert.equal(controller.requestPlay(), true)
+  assert.ok(MOTION_DURATION_MS['play-catch'] >= 1_500, 'caught-toy success must remain readable to the player')
   controller.update(idle, 0)
   assert.equal(controller.getState().action, 'player-play')
   assert.equal(controller.getState().moving, true)

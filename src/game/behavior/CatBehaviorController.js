@@ -31,7 +31,7 @@ export const MOTION_DURATION_MS = Object.freeze({
   'play-notice': 500,
   'play-crouch': 680,
   'play-pounce': 540,
-  'play-catch': 665,
+  'play-catch': 1_600,
   'play-recover': 710,
   welcome: 590,
 })

@@ -2091,7 +2091,6 @@ async function runInteractionCase() {
           assert.equal(playDiagnostic.toyVisible, false, 'Room toy must hide while the cat carries its caught toy')
           assert.equal(playDiagnostic.toyFloorCoverVisible, true, 'The approved-room floor cover must hide the baked ball during catch')
           assert.equal(playDiagnostic.caughtToyVisible, true, 'The cat must visibly carry the exact ball cutout during catch')
-          catchScreenshot = await driver.saveElementScreenshot('#app', 'room-toy-catch.png')
           catchParity = await runVisualProbe({
             kind: 'catch',
             roomUrl: DIRECT_ART_FILES.room.url,
@@ -2102,6 +2101,7 @@ async function runInteractionCase() {
           })
           result.catchVisualParity = catchParity
           assertCatchVisualParity(catchParity, '393x852 catch')
+          catchScreenshot = await driver.saveElementScreenshot('#app', 'room-toy-catch.png')
         }
       } else if (playStarted) {
         break
@@ -2316,7 +2316,6 @@ async function runResponsiveInteractionCase(size) {
         )
         caught = {
           diagnostic,
-          screenshot: await driver.saveElementScreenshot('#app', `room-${size}-toy-catch.png`),
           visualParity: await runVisualProbe({
             kind: 'catch',
             roomUrl: DIRECT_ART_FILES.room.url,
@@ -2328,6 +2327,7 @@ async function runResponsiveInteractionCase(size) {
         }
         result.catch = caught
         assertCatchVisualParity(caught.visualParity, `${size} catch`)
+        caught.screenshot = await driver.saveElementScreenshot('#app', `room-${size}-toy-catch.png`)
         break
       }
       await sleep(70)
