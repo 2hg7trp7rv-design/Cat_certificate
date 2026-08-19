@@ -549,7 +549,15 @@ export class CatBehaviorController {
     if (this.current !== action) return
     action.stepIndex += 1
     this.lastRenderedState = null
-    if (action.stepIndex >= action.steps.length) this.#completeCurrent('completed')
+    if (action.stepIndex >= action.steps.length) {
+      this.#completeCurrent('completed')
+      return
+    }
+
+    // Render the newly active step in the same tick. Without this, getState()
+    // reports the next semantic state while the cat still displays the prior
+    // pose for one frame (most visible when walk becomes sleep transition).
+    this.#runCurrentStep()
   }
 
   #resolveAnchor(anchorId) {

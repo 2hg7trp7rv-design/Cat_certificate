@@ -1356,13 +1356,15 @@ function assertBrandVisualParity(probe, label) {
   assert.ok(probe.sample.lumaVariance > 100, `${label}: decoded emblem lacks source-image color detail`)
   assert.deepEqual(probe.screenshot.natural, { width: 112, height: 112 }, `${label}: emblem screenshot dimensions changed`)
   assert.ok(probe.screenshot.comparedOpaqueInterior >= 5_000, `${label}: too few opaque emblem screenshot pixels were compared`)
-  assert.ok(probe.screenshot.meanAbsoluteError <= 12, `${label}: rendered emblem/source MAE is ${probe.screenshot.meanAbsoluteError}`)
+  assert.ok(probe.screenshot.meanAbsoluteError <= 4, `${label}: rendered emblem/source MAE is ${probe.screenshot.meanAbsoluteError}`)
   assert.ok(
-    probe.screenshot.maximumAbsoluteChannelBias <= 8,
+    probe.screenshot.maximumAbsoluteChannelBias <= 2,
     `${label}: rendered emblem has a global color shift ${JSON.stringify(probe.screenshot.channelBias)}`,
   )
-  assert.ok(probe.screenshot.badPixelRatio <= 0.08, `${label}: rendered emblem >24-error ratio is ${probe.screenshot.badPixelRatio}`)
-  assert.ok(probe.screenshot.errorPercentiles.p95 <= 32, `${label}: rendered emblem p95 error is ${probe.screenshot.errorPercentiles.p95}`)
+  assert.ok(probe.screenshot.badPixelRatio <= 0.01, `${label}: rendered emblem >24-error ratio is ${probe.screenshot.badPixelRatio}`)
+  assert.ok(probe.screenshot.errorPercentiles.p50 <= 3, `${label}: rendered emblem p50 error is ${probe.screenshot.errorPercentiles.p50}`)
+  assert.ok(probe.screenshot.errorPercentiles.p90 <= 9, `${label}: rendered emblem p90 error is ${probe.screenshot.errorPercentiles.p90}`)
+  assert.ok(probe.screenshot.errorPercentiles.p95 <= 13, `${label}: rendered emblem p95 error is ${probe.screenshot.errorPercentiles.p95}`)
   assert.ok(probe.screenshot.opaqueInteriorRatio >= 0.999, `${label}: rendered emblem lost opaque interior coverage`)
 }
 
@@ -1439,13 +1441,13 @@ function assertRoomVisualParity(probe, size, { renderScale = 1 } = {}) {
   for (const region of probe.regions) {
     assert.ok(region.count >= 150, `${size}/${region.name}: too few independent room samples (${region.count})`)
     assertMetricEnvelope(region, `${size}/${region.name}`, {
-      meanAbsoluteError: 18,
-      maximumAbsoluteChannelBias: 6,
-      badPixelRatio: 0.12,
-      severeChannelRatio: 0.06,
-      p50: 12,
-      p90: 36,
-      p95: 56,
+      meanAbsoluteError: 4,
+      maximumAbsoluteChannelBias: 2,
+      badPixelRatio: 0.01,
+      severeChannelRatio: 0.001,
+      p50: 3,
+      p90: 9,
+      p95: 13,
     })
     assert.ok(region.expectedLumaVariance > 1, `${size}/${region.name}: reference ROI is unexpectedly blank`)
     assert.ok(region.actualLumaVariance > 1, `${size}/${region.name}: WebGL ROI is unexpectedly blank`)
@@ -1457,13 +1459,13 @@ function assertRoomVisualParity(probe, size, { renderScale = 1 } = {}) {
     `${size}: cat/shadow exclusion removed too much of the room frame`,
   )
   assertMetricEnvelope(probe.fullFrame, `${size}/full-frame`, {
-    meanAbsoluteError: 18,
-    maximumAbsoluteChannelBias: 6,
-    badPixelRatio: 0.12,
-    severeChannelRatio: 0.06,
-    p50: 12,
-    p90: 36,
-    p95: 56,
+    meanAbsoluteError: 4,
+    maximumAbsoluteChannelBias: 2,
+    badPixelRatio: 0.01,
+    severeChannelRatio: 0.001,
+    p50: 3,
+    p90: 9,
+    p95: 13,
   })
 }
 
@@ -1474,13 +1476,13 @@ function assertPoseVisualParity(probe, poseName, pose, facing = 'right') {
   assert.equal(probe.pose, poseName, `${poseName}: visual probe returned the wrong pose`)
   assert.ok(metrics.count >= 80, `${poseName}: too few opaque cat pixels reached WebGL (${metrics.count})`)
   assertMetricEnvelope(metrics, `${poseName} pose`, {
-    meanAbsoluteError: 24,
-    maximumAbsoluteChannelBias: 8,
-    badPixelRatio: 0.18,
-    severeChannelRatio: 0.12,
-    p50: 18,
-    p90: 52,
-    p95: 80,
+    meanAbsoluteError: 7,
+    maximumAbsoluteChannelBias: 2.5,
+    badPixelRatio: 0.05,
+    severeChannelRatio: 0.008,
+    p50: 3,
+    p90: 15,
+    p95: 24,
     minimumBaselineChangedRatio: 0.65,
   })
   assert.ok(metrics.meanBaselineDistance >= 7, `${poseName}: rendered cat is not distinguishable from the room (${metrics.meanBaselineDistance})`)
@@ -1538,25 +1540,25 @@ function assertCatchVisualParity(probe, label) {
 
   assert.ok(probe.cover.count >= 12, `${label}: no independently visible floor-cover pixels reached WebGL`)
   assertMetricEnvelope(probe.cover, `${label} floor-cover`, {
-    meanAbsoluteError: 28,
-    maximumAbsoluteChannelBias: 12,
-    badPixelRatio: 0.28,
-    severeChannelRatio: 0.18,
-    p50: 20,
-    p90: 64,
-    p95: 96,
+    meanAbsoluteError: 2.5,
+    maximumAbsoluteChannelBias: 1.8,
+    badPixelRatio: 0.01,
+    severeChannelRatio: 0.002,
+    p50: 2,
+    p90: 4,
+    p95: 5,
     minimumBaselineChangedRatio: 0.55,
   })
   assert.ok(probe.cover.meanBaselineDistance >= 5, `${label}: floor cover did not replace the baked ball region`)
   assert.ok(probe.ball.count >= 8, `${label}: no independently visible caught-toy pixels reached WebGL`)
   assertMetricEnvelope(probe.ball, `${label} caught-toy`, {
-    meanAbsoluteError: 28,
-    maximumAbsoluteChannelBias: 12,
-    badPixelRatio: 0.28,
-    severeChannelRatio: 0.18,
-    p50: 20,
-    p90: 64,
-    p95: 96,
+    meanAbsoluteError: 2.5,
+    maximumAbsoluteChannelBias: 1.8,
+    badPixelRatio: 0.01,
+    severeChannelRatio: 0.002,
+    p50: 2,
+    p90: 4,
+    p95: 5,
     minimumBaselineChangedRatio: 0.55,
   })
   assert.ok(probe.ball.meanBaselineDistance >= 5, `${label}: caught toy is not distinguishable from the covered floor`)
@@ -1566,13 +1568,13 @@ function assertCatchVisualParity(probe, label) {
   assert.ok(probe.fixedBallRoi.candidateCount >= 20, `${label}: fixed baked-ball ROI has no independently changed cover pixels`)
   assert.ok(probe.fixedBallRoi.count >= 12, `${label}: fixed baked-ball ROI is fully obscured or unchanged`)
   assertMetricEnvelope(probe.fixedBallRoi, `${label} fixed baked-ball ROI`, {
-    meanAbsoluteError: 28,
-    maximumAbsoluteChannelBias: 12,
-    badPixelRatio: 0.28,
-    severeChannelRatio: 0.18,
-    p50: 20,
-    p90: 64,
-    p95: 96,
+    meanAbsoluteError: 2.5,
+    maximumAbsoluteChannelBias: 1.8,
+    badPixelRatio: 0.01,
+    severeChannelRatio: 0.002,
+    p50: 2,
+    p90: 4,
+    p95: 5,
     minimumBaselineChangedRatio: 0.55,
   })
   assert.ok(probe.fixedBallRoi.meanBaselineDistance >= 5, `${label}: fixed baked-ball ROI still shows the baked ball`)
@@ -1598,13 +1600,13 @@ function assertBedVisualParity(probe, label) {
   assert.equal(foreground.displayHeight, 145, `${label}: bed foreground display height changed`)
   assert.ok(probe.overlap.count >= 12, `${label}: cat and bed foreground have no verified WebGL overlap`)
   assertMetricEnvelope(probe.overlap, `${label} bed-occlusion`, {
-    meanAbsoluteError: 28,
-    maximumAbsoluteChannelBias: 12,
-    badPixelRatio: 0.28,
-    severeChannelRatio: 0.18,
-    p50: 20,
-    p90: 64,
-    p95: 96,
+    meanAbsoluteError: 5,
+    maximumAbsoluteChannelBias: 1.5,
+    badPixelRatio: 0.01,
+    severeChannelRatio: 0.002,
+    p50: 4,
+    p90: 11,
+    p95: 14,
     minimumBaselineChangedRatio: 0.55,
   })
   assert.ok(probe.overlap.meanBaselineDistance >= 5, `${label}: foreground did not visibly replace cat pixels`)

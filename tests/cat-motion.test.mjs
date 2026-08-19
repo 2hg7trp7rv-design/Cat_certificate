@@ -145,7 +145,16 @@ test('player play runs as one ordered action instead of overlapping ambient moti
   assert.equal(controller.getState().moving, true)
   assert.equal(controller.requestPlay(), false)
 
-  for (let time = 100; time <= 7_000; time += 100) controller.update(idle, time)
+  for (let time = 100; time <= 7_000; time += 100) {
+    const current = controller.update(idle, time)
+    if (current.state) {
+      assert.equal(
+        cat.states.at(-1)?.state,
+        current.state,
+        `semantic state ${current.state} must not lead its rendered pose by one frame`,
+      )
+    }
+  }
 
   const rendered = new Set(cat.states.map(entry => entry.state))
   assert.ok(rendered.has('walk'))
@@ -181,9 +190,22 @@ test('sleep interrupts play but moves toward bed without teleporting', () => {
   assert.equal(controller.getState().anchor, 'bed-sleep')
   assert.deepEqual({ x: cat.x, y: cat.y }, beforeSleep)
 
-  controller.update(sleeping, 3_600_200)
-  assert.notEqual(cat.x, DEFAULT_CAT_ANCHORS['bed-sleep'].x)
-  assert.notEqual(cat.y, DEFAULT_CAT_ANCHORS['bed-sleep'].y)
+  let reachedTransition = false
+  for (let time = 300; time <= 8_000; time += 100) {
+    const current = controller.update(sleeping, time)
+    if (current.state) {
+      assert.equal(
+        cat.states.at(-1)?.state,
+        current.state,
+        `sleep state ${current.state} must be rendered in the same tick`,
+      )
+    }
+    if (current.state === 'sleep-curl-transition') reachedTransition = true
+  }
+
+  assert.equal(reachedTransition, true)
+  assert.equal(cat.x, DEFAULT_CAT_ANCHORS['bed-sleep'].x)
+  assert.equal(cat.y, DEFAULT_CAT_ANCHORS['bed-sleep'].y)
   assert.equal(controller.getState().action, 'sleep')
 })
 
