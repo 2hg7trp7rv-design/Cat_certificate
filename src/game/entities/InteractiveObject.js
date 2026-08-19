@@ -57,6 +57,17 @@ export class InteractiveObject extends Phaser.GameObjects.Container {
     return this
   }
 
+  /**
+   * Empty Containers have no render bounds in Phaser, even though their
+   * Canvas hit geometry is valid. Expose the centered interaction footprint
+   * separately so QA and responsive checks inspect the real tappable area.
+   */
+  getInteractionBounds(output = new Phaser.Geom.Rectangle()) {
+    const width = this.width * Math.abs(this.scaleX)
+    const height = this.height * Math.abs(this.scaleY)
+    return output.setTo(this.x - width / 2, this.y - height / 2, width, height)
+  }
+
   applyTint() {
     this.visual?.setTint(this.attention ? 0xffd77a : this.hovered ? 0xffefc7 : 0xffffff)
   }

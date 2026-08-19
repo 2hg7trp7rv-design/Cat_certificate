@@ -39,7 +39,7 @@ const phaseLight = phase => ({
 const centerOf = object => ({ x: object.x, y: object.y })
 
 const boundsOf = object => {
-  const bounds = object?.getBounds?.()
+  const bounds = object?.getInteractionBounds?.() ?? object?.getBounds?.()
   if (!bounds) return null
   const x = Number(bounds.x)
   const y = Number(bounds.y)
