@@ -1,8 +1,16 @@
-export function classifyPettingZone(x, y, facing = 'right') {
-  if (y < -48) return 'head'
-  const towardTail = facing === 'left' ? x < -24 : x > 24
-  if (towardTail && y > -42) return 'tail'
-  if (Math.abs(x) > 12) return 'back'
+import { DIRECT_CAT_PET_ZONES } from '../art/DirectArtManifest.js'
+
+const contains = (region, x, y) => x >= region.x
+  && x <= region.x + region.width
+  && y >= region.y
+  && y <= region.y + region.height
+
+export function classifyPettingZone(x, y, facing = 'right', poseName = 'seated') {
+  const regions = DIRECT_CAT_PET_ZONES[poseName] ?? DIRECT_CAT_PET_ZONES.seated
+  const sourceX = facing === 'right' ? -x : x
+  if (contains(regions.head, sourceX, y)) return 'head'
+  if (contains(regions.tail, sourceX, y)) return 'tail'
+  if (contains(regions.back, sourceX, y)) return 'back'
   return 'flank'
 }
 
@@ -16,7 +24,7 @@ const toLocal = (cat, pointer) => ({
 })
 
 export class PettingInput {
-  constructor(cat, { onComplete, onMove, minimumDistance = 18 } = {}) {
+  constructor(cat, { onComplete, onMove, minimumDistance = 40 } = {}) {
     this.cat = cat
     this.onComplete = onComplete
     this.onMove = onMove
@@ -70,7 +78,7 @@ export class PettingInput {
       return
     }
     const result = {
-      zone: classifyPettingZone(local.x, local.y, this.cat.facing),
+      zone: classifyPettingZone(local.x, local.y, this.cat.facing, this.cat.poseName),
       pace: classifyPettingPace(this.active.distance, duration),
       distance: this.active.distance,
       duration,

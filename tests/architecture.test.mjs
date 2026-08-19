@@ -9,7 +9,7 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const DIST = resolve(ROOT, 'dist')
 const TEXT_EXTENSIONS = new Set(['.css', '.html', '.js', '.json', '.mjs', '.ts', '.tsx'])
 const SCENES = ['BootScene', 'FirstMeetingScene', 'RoomScene', 'DebugScene']
-const REQUIRED_LAYERS = ['room', 'furniture', 'cat', 'light', 'shadow']
+const REQUIRED_LAYERS = ['room', 'shadow', 'furniture', 'cat', 'foreground', 'light']
 
 const toPosix = value => value.split(sep).join('/')
 const repoPath = value => toPosix(relative(ROOT, value))
@@ -144,13 +144,15 @@ test('all four v0.8 scenes exist, extend Phaser.Scene, and are registered', asyn
   }
 })
 
-test('Phaser is explicitly configured for pixel-perfect WebGL resize', async () => {
+test('Phaser is explicitly configured for capped-HiDPI direct-image WebGL', async () => {
   const configPath = resolve(ROOT, 'src/game/config.js')
   assert.equal(await exists(configPath), true, 'Missing src/game/config.js')
   const source = await readText(configPath)
   const entry = await readText(resolve(ROOT, 'src/main.js'))
+  const hiDpi = await readText(resolve(ROOT, 'src/game/render/HiDpiScale.js'))
+  const debugScene = await readText(resolve(ROOT, 'src/game/scenes/DebugScene.js'))
   assert.match(source, /\btype\s*:\s*Phaser\.WEBGL\b/, 'Phaser config must use `type: Phaser.WEBGL`')
-  assert.doesNotMatch(source, /\btype\s*:\s*Phaser\.(?:AUTO|CANVAS|HEADLESS)\b/, 'AUTO/CANVAS/HEADLESS renderer fallback is not accepted for v0.8')
+  assert.doesNotMatch(source, /\btype\s*:\s*Phaser\.(?:AUTO|CANVAS|HEADLESS)\b/, 'AUTO/CANVAS/HEADLESS renderer fallback is not accepted for v0.8.1')
   assert.match(entry, /getContext\(['"]webgl['"]\)/, 'preflight must probe the WebGL1 context Phaser 4.2.1 requests')
   assert.doesNotMatch(entry, /getContext\(['"]webgl2['"]\)/, 'a WebGL2-only preflight can disagree with the Phaser renderer')
   assert.match(entry, /WEBGL_lose_context/, 'the preflight context must be released before Phaser allocates its renderer')
@@ -159,32 +161,67 @@ test('Phaser is explicitly configured for pixel-perfect WebGL resize', async () 
     /failIfMajorPerformanceCaveat\s*:\s*true/,
     'WebGL must remain available on low-power GPUs; performance is validated separately',
   )
-  assert.match(source, /pixelArt\s*:\s*true/, 'v0.8 must enable Phaser pixel-art rendering')
-  assert.match(source, /smoothPixelArt\s*:\s*false/, 'world textures must not be smoothed')
-  assert.match(source, /roundPixels\s*:\s*true/, 'v0.8 must round rendered world pixels')
-  assert.match(source, /antialias\s*:\s*false/, 'v0.8 pixel world must disable antialiasing')
-  assert.match(source, /mode\s*:\s*Phaser\.Scale\.RESIZE/, 'Canvas must resize 1:1 with the mobile viewport')
+  assert.match(source, /pixelArt\s*:\s*false/, 'the approved high-detail PNGs must not be forced through Phaser pixel-art sampling')
+  assert.match(source, /roundPixels\s*:\s*false/, 'fractional centered cover must not be shifted by renderer pixel rounding')
+  assert.match(source, /antialias\s*:\s*true/, 'the approved high-detail PNGs require filtered downscaling')
+  assert.match(source, /mode\s*:\s*Phaser\.Scale\.NONE/, 'HiDPI backing-store control requires Phaser Scale.NONE')
+  assert.doesNotMatch(source, /mode\s*:\s*Phaser\.Scale\.RESIZE/, 'Scale.RESIZE collapses the backing store to one pixel per CSS pixel')
+  assert.match(source, /hiDpiMetrics\?\.backingWidth/, 'config width must come from measured HiDPI backing metrics')
+  assert.match(source, /hiDpiMetrics\?\.backingHeight/, 'config height must come from measured HiDPI backing metrics')
+  assert.match(source, /hiDpiMetrics\?\.zoom/, 'Scale.NONE must start at the inverse render-scale zoom')
+  assert.match(hiDpi, /MAX_RENDER_SCALE\s*=\s*2\b/, 'the backing-store scale must remain capped at DPR 2')
+  assert.match(hiDpi, /scaleManager\.setZoom\(metrics\.zoom\)/, 'runtime HiDPI sync must use public ScaleManager.setZoom')
+  assert.match(hiDpi, /scaleManager\.resize\(metrics\.backingWidth,\s*metrics\.backingHeight\)/, 'runtime HiDPI sync must use public ScaleManager.resize')
+  assert.match(entry, /getInitialHiDpiMetrics\(gameHost\)/, 'startup must measure the actual #game CSS box before creating Phaser')
+  assert.ok(
+    entry.indexOf('applyQaSize(options.requestedSize)') < entry.indexOf('getInitialHiDpiMetrics(gameHost)'),
+    'QA CSS dimensions must be applied before the startup HiDPI measurement',
+  )
+  assert.match(entry, /installHiDpiScaleSync\(instance\.scale,\s*gameHost/, 'postBoot must keep Scale.NONE synchronized with host and DPR changes')
+  assert.match(entry, /Phaser\.Core\.Events\.DESTROY,\s*\(\)\s*=>\s*hiDpiScale\.destroy\(\)/, 'game destruction must clean up HiDPI observers')
+  assert.match(debugScene, /this\.scale\.displayScale\?\.x/, 'DebugScene CSS-space overlay coordinates must account for the backing scale')
+  assert.match(debugScene, /setPosition\(10\s*\*\s*backingScale,\s*96\s*\*\s*backingScale\)/, 'DebugScene panel coordinates must scale with the backing store')
 
   const camera = await readText(resolve(ROOT, 'src/game/world/WorldCamera.js'))
-  assert.match(camera, /WORLD_ZOOM\s*=\s*2\b/, 'world camera zoom must remain 2× on every supported viewport')
-  assert.match(camera, /setZoom\(WORLD_ZOOM\)/, 'world scenes must apply the fixed integer zoom')
+  assert.match(camera, /WORLD_WIDTH\s*=\s*852\b/, 'world width must equal the approved room PNG')
+  assert.match(camera, /WORLD_HEIGHT\s*=\s*1846\b/, 'world height must equal the approved room PNG')
+  assert.match(camera, /calculateWorldZoom/, 'world camera must calculate a viewport-dependent cover zoom')
+  assert.match(camera, /Math\.max\(width\s*\/\s*WORLD_WIDTH,\s*height\s*\/\s*WORLD_HEIGHT\)/, 'world camera must use cover rather than contain/stretch')
+  assert.match(camera, /setZoom\(zoom\)/, 'world scenes must apply the calculated cover zoom')
+
+  const styles = await readText(resolve(ROOT, 'src/styles.css'))
+  const canvasRule = styles.match(/\.game-host canvas\s*\{[\s\S]*?\}/)?.[0] ?? ''
+  assert.match(canvasRule, /image-rendering\s*:\s*auto/, 'Canvas CSS must preserve filtered direct-image rendering')
 })
 
-test('runtime uses the production pixel art manifest without placeholder art', async () => {
-  const artPath = resolve(ROOT, 'src/game/art/PixelArt.js')
-  assert.equal(await exists(artPath), true, 'Missing src/game/art/PixelArt.js')
-  const art = await readText(artPath)
+test('runtime preloads the approved direct-art manifest without procedural fallback art', async () => {
+  const manifestPath = resolve(ROOT, 'src/game/art/DirectArtManifest.js')
+  const directArtPath = resolve(ROOT, 'src/game/art/DirectArt.js')
+  assert.equal(await exists(manifestPath), true, 'Missing src/game/art/DirectArtManifest.js')
+  assert.equal(await exists(directArtPath), true, 'Missing src/game/art/DirectArt.js')
+  const manifest = await readText(manifestPath)
+  const directArt = await readText(directArtPath)
   const boot = await readText(resolve(ROOT, 'src/game/scenes/BootScene.js'))
-  assert.match(art, /PIXEL_TEXTURE_MANIFEST/)
-  assert.match(art, /pixel\.cat\./)
-  assert.match(art, /pixel\.room\./)
-  assert.match(art, /pixel\.furniture\./)
-  assert.match(boot, /createPixelTextures/)
-  assert.doesNotMatch(`${art}\n${boot}`, /createPlaceholderTextures|placeholder\./)
+  const roomWorld = await readText(resolve(ROOT, 'src/game/world/RoomWorld.js'))
+  assert.match(manifest, /DIRECT_ART_MANIFEST/)
+  assert.match(manifest, /IMG_3036\.png/)
+  assert.match(manifest, /IMG_3037\.png/)
+  assert.match(manifest, /IMG_3038\.png/)
+  assert.match(directArt, /preloadDirectArt/)
+  assert.match(directArt, /scene\.load\.image/)
+  assert.match(directArt, /prepareDirectArt/)
+  assert.match(boot, /preload\s*\(\)/)
+  assert.match(boot, /preloadDirectArt\(this\)/)
+  assert.match(boot, /prepareDirectArt\(this\)/)
+  assert.match(roomWorld, /DIRECT_ART_FILES\.room\.key,\s*['"]__BASE['"]/, 'the approved room must render its full __BASE frame')
+  assert.match(roomWorld, /DIRECT_DERIVED_TEXTURES\.bedForeground\.key/, 'bed occlusion must use a WebGL-safe transparent derivative')
+  assert.doesNotMatch(roomWorld, /\.setMask\s*\(/, 'Phaser 4 GameObject.setMask is not supported by the required WebGL renderer')
+  assert.doesNotMatch(`${manifest}\n${directArt}\n${boot}`, /createPixelTextures|createPlaceholderTextures|placeholder\./)
+  assert.equal(await exists(resolve(ROOT, 'src/game/art/PixelArt.js')), false, 'Remove the procedural PixelArt.js runtime fallback')
   assert.equal(await exists(resolve(ROOT, 'src/game/art/PlaceholderArt.js')), false, 'Remove v0.7 PlaceholderArt.js')
 })
 
-test('room, furniture, cat, light, and shadow are named Phaser layers', async () => {
+test('the six direct-art render layers are explicit Phaser display-list layers', async () => {
   const roomScenePath = resolve(ROOT, 'src/game/scenes/RoomScene.js')
   const roomWorldPath = resolve(ROOT, 'src/game/world/RoomWorld.js')
   assert.equal(await exists(roomScenePath), true, 'Missing src/game/scenes/RoomScene.js')
@@ -201,6 +238,44 @@ test('room, furniture, cat, light, and shadow are named Phaser layers', async ()
   assert.ok(
     layerCreations.length >= REQUIRED_LAYERS.length || factoryCreatesLayers,
     `RoomScene must create distinct Phaser layers (${REQUIRED_LAYERS.join(', ')})`,
+  )
+})
+
+test('the visual-readback bridge and preserved framebuffer are strictly QA-query guarded', async () => {
+  const roomWorld = await readText(resolve(ROOT, 'src/game/world/RoomWorld.js'))
+  const config = await readText(resolve(ROOT, 'src/game/config.js'))
+  const entry = await readText(resolve(ROOT, 'src/main.js'))
+
+  assert.match(roomWorld, /QA_BRIDGE_KEY\s*=\s*['"]__TAIL_ROOM_QA_BRIDGE__['"]/)
+  assert.match(roomWorld, /document\.documentElement\.dataset\.qa\s*!==\s*['"]true['"]/, 'QA bridge must reject normal documents')
+  assert.match(roomWorld, /Object\.freeze\(\{[\s\S]*?inspect:[\s\S]*?getTextureSource:[\s\S]*?setPose:/, 'QA bridge surface must stay limited to inspection and deterministic pose selection')
+  assert.match(roomWorld, /delete\s+window\[QA_BRIDGE_KEY\]/, 'QA bridge must be removed during RoomWorld destruction')
+  assert.doesNotMatch(entry, /__TAIL_ROOM_QA_BRIDGE__/, 'application entrypoint must not expose the QA bridge globally')
+
+  assert.match(config, /preserveDrawingBuffer\s*=\s*false/, 'normal runtime must default framebuffer preservation off')
+  assert.match(config, /preserveDrawingBuffer:\s*Boolean\(preserveDrawingBuffer\)/, 'renderer must use only the guarded option')
+  assert.match(entry, /qaApproved\s*=\s*isLoopbackHostname\(location\.hostname\)\s*&&\s*QA_SIZES\.has\(requestedQaSize\)/, 'QA mode must require both loopback and an approved QA viewport')
+  assert.match(entry, /preserveDrawingBuffer:\s*options\.qaApproved/, 'framebuffer preservation must require the complete QA authorization gate')
+  assert.match(entry, /requestedScene\s*=\s*qaApproved\s*&&/, 'scene bypass must not be available to normal URLs')
+})
+
+test('WebGL smoke evidence is isolated to a freshly cleared v0.8.1 artifact directory', async () => {
+  const smoke = await readText(resolve(ROOT, 'scripts/browser-smoke.mjs'))
+  const workflow = await readText(resolve(ROOT, '.github/workflows/quality.yml'))
+
+  assert.match(smoke, /ARTIFACT_DIR\s*=\s*resolve\(ROOT,\s*['"]artifacts\/v0\.8\.1['"]\)/)
+  assert.match(smoke, /await\s+rm\(ARTIFACT_DIR,\s*\{\s*recursive:\s*true,\s*force:\s*true\s*\}\)/, 'smoke must clear prior evidence before creating screenshots')
+  assert.match(workflow, /name:\s*tail-room-v0\.8\.1-webgl-smoke/)
+  assert.match(workflow, /path:\s*artifacts\/v0\.8\.1/)
+  assert.doesNotMatch(`${smoke}\n${workflow}`, /artifacts\/v0\.8(?:\/|['"])/, 'v0.8 evidence path can mix stale PNGs into v0.8.1')
+})
+
+test('first meeting preserves the approved daytime source colors', async () => {
+  const source = await readText(resolve(ROOT, 'src/game/world/RoomWorld.js'))
+  assert.match(
+    source,
+    /const phase\s*=\s*this\.firstMeeting\s*\?\s*['"]day['"]\s*:/,
+    'onboarding must not tint the approved source before the player sees it',
   )
 })
 
@@ -240,11 +315,13 @@ test('the required naming step cannot be dismissed into a stuck onboarding state
   assert.match(ui, /openSheet\s*===\s*e\.namePanel\)\s*return/)
 })
 
-test('authored side-view cat motion faces its travel direction', async () => {
-  const art = await readText(resolve(ROOT, 'src/game/art/PixelArt.js'))
-  assert.match(art, /headX\s*=\s*bodyCenterX\s*\+\s*facing\s*\*/)
-  assert.match(art, /drawTail\(context,\s*tailVariant,\s*crouch\s*>\s*4,\s*-facing\)/)
-  assert.match(art, /context\.translate\(Math\.min\(8,\s*frame\s*\*\s*2\),\s*leap\)/)
+test('direct side-view cat poses flip with their travel direction', async () => {
+  const cat = await readText(resolve(ROOT, 'src/game/entities/Cat.js'))
+  assert.match(cat, /DIRECT_ART_FILES\.cat\.key/)
+  assert.match(cat, /resolveDirectCatPose/)
+  assert.match(cat, /flip\s*=\s*this\.facing\s*===\s*['"]right['"]/)
+  assert.match(cat, /setFlipX\(flip\)/)
+  assert.doesNotMatch(cat, /pixel\.cat\./)
 })
 
 test('the pinned Phaser 4 vendor artifact has a verified SHA-256 manifest', async () => {
@@ -295,10 +372,10 @@ test('the pinned Phaser 4 vendor artifact has a verified SHA-256 manifest', asyn
   )
 })
 
-test('runtime and package contain no stale pre-v0.8 identity markers', async () => {
+test('runtime and package identify the v0.8.1 direct-art milestone', async () => {
   const packagePath = resolve(ROOT, 'package.json')
   const pkg = JSON.parse(await readText(packagePath))
-  assert.match(pkg.version, /^0\.8\.\d+(?:-[0-9A-Za-z.-]+)?$/, 'package.json must identify the v0.8 milestone')
+  assert.equal(pkg.version, '0.8.1', 'package.json must identify the direct-art milestone')
 
   const files = [
     packagePath,

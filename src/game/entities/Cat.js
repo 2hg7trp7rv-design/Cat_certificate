@@ -1,4 +1,9 @@
 import Phaser from '../phaser.js'
+import {
+  DIRECT_ART_FILES,
+  DIRECT_CAT_POSES,
+  resolveDirectCatPose,
+} from '../art/DirectArtManifest.js'
 import { alignCenteredHitArea } from '../input/HitArea.js'
 
 const animation = (frames, durations, { loop = false } = {}) => Object.freeze({
@@ -9,9 +14,9 @@ const animation = (frames, durations, { loop = false } = {}) => Object.freeze({
 })
 
 /**
- * v0.8 pixel-animation contract. Slow holds are deliberate: a 60 fps render
- * loop still presents authored cat poses at roughly 8–12 drawings per second,
- * while breathing and sleep retain the quiet pauses real cats need.
+ * Logical motion timing. The approved source sheet contains eight drawings;
+ * these timings keep movement and behavior deterministic while those exact
+ * drawings are selected for each state.
  */
 export const CAT_ANIMATION_SPECS = Object.freeze({
   idle: animation(4, [620, 180, 620, 180], { loop: true }),
@@ -55,13 +60,8 @@ export const resolveCatAnimationFrame = (state, elapsedMs = 0, loopOverride) => 
   return spec.frames - 1
 }
 
-const CAT_HIT_POLYGON = Object.freeze([
-  -34, 3, -38, -22, -32, -52, -20, -75, -8, -85,
-  12, -82, 30, -62, 38, -35, 37, -4, 25, 3,
-])
-
 export class Cat extends Phaser.GameObjects.Container {
-  constructor(scene, x, y, { scale = 0.72 } = {}) {
+  constructor(scene, x, y, { scale = 0.75 } = {}) {
     super(scene, x, y)
     this.baseScale = scale
     this.motionState = 'idle'
@@ -69,24 +69,31 @@ export class Cat extends Phaser.GameObjects.Container {
     this.sleeping = false
     this.night = false
     this.facing = 'right'
-    this.textureFrameBases = new Map()
+    this.poseName = 'seated'
 
     const createSprite = typeof scene.add.sprite === 'function'
       ? scene.add.sprite.bind(scene.add)
       : scene.add.image.bind(scene.add)
-    this.pixelSprite = createSprite(0, 0, 'pixel.cat.idle.0')
-      .setOrigin(0.5, 88 / 96)
+    this.pixelSprite = createSprite(0, 0, DIRECT_ART_FILES.cat.key, DIRECT_CAT_POSES.seated.frame)
     this.add(this.pixelSprite)
     scene.add.existing(this)
+    this.#showDirectPose('seated')
     this.setScale(scale)
-    this.setSize(96, 96)
+    this.setSize(500, 400)
+    const seated = DIRECT_CAT_POSES.seated
     const hitArea = alignCenteredHitArea(
-      new Phaser.Geom.Polygon(CAT_HIT_POLYGON),
+      new Phaser.Geom.Rectangle(
+        -seated.pivot.x,
+        -seated.pivot.y,
+        seated.rect.width,
+        seated.rect.height,
+      ),
       this.displayOriginX,
       this.displayOriginY,
     )
-    this.setInteractive(hitArea, Phaser.Geom.Polygon.Contains)
+    this.setInteractive(hitArea, Phaser.Geom.Rectangle.Contains)
     this.inputShape = hitArea
+    this.#updateHitArea(seated)
   }
 
   setGrowthScale(growthScale = 1) {
@@ -114,7 +121,7 @@ export class Cat extends Phaser.GameObjects.Container {
 
   setFacing(direction = 'right') {
     this.facing = direction === 'left' ? 'left' : 'right'
-    this.pixelSprite.setFlipX(this.facing === 'left')
+    this.#applyPoseTransform(DIRECT_CAT_POSES[this.poseName] ?? DIRECT_CAT_POSES.seated)
     return this
   }
 
@@ -139,17 +146,17 @@ export class Cat extends Phaser.GameObjects.Container {
   }
 
   getMotionState() {
-    return { state: this.motionState, frame: this.motionFrame, facing: this.facing }
+    return { state: this.motionState, frame: this.motionFrame, facing: this.facing, pose: this.poseName }
   }
 
   acknowledgePetting(welcome = true) {
-    if (welcome && this.#hasPixelFrame('welcome', 0)) this.setMotionState('welcome')
+    if (welcome) this.setMotionState('welcome')
 
     this.scene.tweens.killTweensOf(this.pixelSprite)
     this.pixelSprite.setY(0)
     this.scene.tweens.add({
       targets: this.pixelSprite,
-      y: welcome ? -2 : 1,
+      y: welcome ? -8 : 3,
       duration: 130,
       yoyo: true,
       ease: 'Sine.Out',
@@ -157,37 +164,41 @@ export class Cat extends Phaser.GameObjects.Container {
     return this
   }
 
-  #textureBase(state) {
-    if (this.textureFrameBases.has(state)) return this.textureFrameBases.get(state)
-    const base = this.scene.textures?.exists?.(`pixel.cat.${state}.0`)
-      ? 0
-      : this.scene.textures?.exists?.(`pixel.cat.${state}.1`) ? 1 : null
-    this.textureFrameBases.set(state, base)
-    return base
-  }
-
-  #hasPixelFrame(state, frame) {
-    const base = this.#textureBase(state)
-    return base !== null && Boolean(this.scene.textures?.exists?.(`pixel.cat.${state}.${frame + base}`))
-  }
-
   #showPixelFrame(state, frame) {
-    const base = this.#textureBase(state)
-    if (base === null) return this.#showIdleFallbackFrame(frame)
-    const key = `pixel.cat.${state}.${frame + base}`
-    if (!this.scene.textures?.exists?.(key)) return this.#showIdleFallbackFrame(frame)
-    this.pixelSprite.setTexture(key).setFlipX(this.facing === 'left')
+    return this.#showDirectPose(resolveDirectCatPose(state, frame))
+  }
+
+  #showDirectPose(poseName) {
+    const pose = DIRECT_CAT_POSES[poseName] ?? DIRECT_CAT_POSES.seated
+    if (!this.scene.textures?.exists?.(DIRECT_ART_FILES.cat.key)) return false
+    this.poseName = DIRECT_CAT_POSES[poseName] ? poseName : 'seated'
+    this.pixelSprite
+      .setTexture(DIRECT_ART_FILES.cat.key, pose.frame)
+    this.#applyPoseTransform(pose)
     return true
   }
 
-  #showIdleFallbackFrame(frame) {
-    const base = this.#textureBase('idle')
-    if (base === null) return false
-    const idleFrame = frame % CAT_ANIMATION_SPECS.idle.frames
-    const key = `pixel.cat.idle.${idleFrame + base}`
-    if (!this.scene.textures?.exists?.(key)) return false
-    this.pixelSprite.setTexture(key).setFlipX(this.facing === 'left')
-    return true
+  #applyPoseTransform(pose) {
+    const flip = this.facing === 'right'
+    const sourceOriginX = pose.pivot.x / pose.rect.width
+    this.pixelSprite
+      .setOrigin(flip ? 1 - sourceOriginX : sourceOriginX, pose.pivot.y / pose.rect.height)
+      .setFlipX(flip)
+    this.#updateHitArea(pose)
+  }
+
+  #updateHitArea(pose) {
+    if (!this.input) return
+    const flip = this.facing === 'right'
+    const localX = flip ? -(pose.rect.width - pose.pivot.x) : -pose.pivot.x
+    const shape = alignCenteredHitArea(
+      new Phaser.Geom.Rectangle(localX, -pose.pivot.y, pose.rect.width, pose.rect.height),
+      this.displayOriginX,
+      this.displayOriginY,
+    )
+    this.input.hitArea = shape
+    this.input.hitAreaCallback = Phaser.Geom.Rectangle.Contains
+    this.inputShape = shape
   }
 
   #applyTint() {

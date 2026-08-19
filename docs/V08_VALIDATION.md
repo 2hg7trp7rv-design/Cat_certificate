@@ -1,106 +1,197 @@
-# Tail Room v0.8 Validation
+# Tail Room v0.8.1 Direct-art Validation
 
-更新日: 2026-08-18 JST  
-対象: Creator Preview 0.8.0
+更新日: 2026-08-20 JST
+対象: Creator Preview 0.8.1 direct-art correction
 
-## 1. 判定
+## 1. 現在の判定
 
-現在の判定は**実装＋CIソフトウェアWebGLゲート合格、実機ゲート未完**。
+現在の判定は**direct-art実装中／release evidence未確定**です。
 
-v0.8のピクセル描画、猫motion、behavior controller、温かいDOM UIはruntime／evidence SHA `26935545f03c11df63bc6ddc4a929ec9bab53ee3`へ実装済み。`node scripts/check.mjs`はexit 0で41 JavaScript構文検査・47 tests、GitHub Actions Quality Gate Run 54は`completed / success`、同じSHAのVercel productionは`READY`となった。Run 54のartifactからreportとPNGも取得済み。
+ユーザー承認済みの部屋、猫、初回ビジュアルをruntimeへ直接使用する方針へ修正しました。Phaser 4.2.1 WebGL、6レイヤー、Canvas内形状判定、状態エンジン、DOM UI、保存schema v6は維持します。
 
-物理iPhone、iOS Safari、hardware GPU性能は`NOT TESTED`。CIのChrome 151＋ANGLE SwiftShaderによるソフトウェアWebGL合格は、実機確認や実GPU fpsの代わりにはならない。
+v0.8.1に対する最終commit SHA、`npm run check`、GitHub Actions Quality Gate、3サイズPNG、Vercel deployment、production SHAはすべて`PENDING`です。旧v0.8.0のQuality Gate Run 54と旧deploymentはprocedural-art版の履歴であり、今回の合格証拠には使用しません。
 
-## 2. Source contract
+物理iPhone、iOS Safari、hardware GPU性能も`NOT TESTED`です。
 
-| 項目 | 実装値 | Source evidence |
-|---|---:|---|
-| App version | 0.8.0 | `package.json`, `src/main.js` |
-| Engine | Phaser 4.2.1 / WebGL固定 | `src/game/config.js`, `vendor/phaser-4.2.1/` |
-| World | 216×472 art px | `src/game/world/WorldCamera.js`, `src/game/art/PixelArt.js` |
-| Art grid | 8×8 art px | `PIXEL_TEXTURE_MANIFEST.grid` |
-| Camera | fixed 2×、integer rounding | `WorldCamera.js`, `config.js` |
-| Canvas scale | viewportへ`RESIZE` | `config.js` |
-| World layers | 6 | room、shadow、furniture、cat、foreground、light |
-| Pixel textures | 131 | room／furniture／shadow／light 18 + cat 113 |
-| Cat animation | 21 states／113 frames | `PixelArt.js`, `Cat.js` |
-| Cat frame | 96×96 art px | 共通canvas、foot pivot y=88 |
-| Autonomous interval | 20〜65秒 | `CatBehaviorController.js` |
-| Save schema | version 6 | `src/state.js` |
-| LocalStorage key | `tail-room-state-v6` | `src/state.js` |
+## 2. Direct-art source contract
 
-`docs/art/v08-room-concept.png`と`docs/art/v08-cat-pose-reference.png`は画像生成を用いたvisual direction資料であり、runtimeへ貼る素材ではない。runtimeの部屋、家具、猫、影、光は131個の分離textureとして生成され、concept／reference画像を背景へ焼き込んでいない。
+| Key | Runtime path | Dimensions | SHA-256 |
+|---|---|---:|---|
+| room | `public/assets/game/IMG_3036.png` | 852×1846 RGBA | `ed17e8f3b5e6774720d3f6587cbee0531b26a9ec985c357a25922e128d0bfb1d` |
+| cat | `public/assets/game/IMG_3037.png` | 1536×1024 RGBA | `93daf7f3f669a89a48e1709a9568adc0cef77bedbc21b2be291b9f98840ec90e` |
+| brand | `public/assets/game/IMG_3038.png` | 1254×1254 RGBA | `a1566a67ad07af7f8fc17aabab83dc2b5cf99e4cd8e12b1f481db338ab33ba54` |
 
-### Cat states
+契約:
 
-`idle`, `blink`, `ear`, `look`, `tail`, `stand`, `sit`, `loaf`, `lie`, `walk`, `turn`, `sleep-curl-transition`, `sleep-curl`, `sleep-side-transition`, `sleep-side`, `play-notice`, `play-crouch`, `play-pounce`, `play-catch`, `play-recover`, `welcome`。
+- 3 PNGをbyte-for-byteで`dist/assets/game/`へコピーする
+- build時に寸法とSHAを検査する
+- runtimeはローカルPNGだけをpreloadし、GitHub/CDNから取得しない
+- roomとcatを再生成・再描画・色補正しない
+- catの黒地とbrandの黒地は透明として扱う
+- direct-art textureはLINEAR samplingを使用する
+- day parity検査ではtintと時間帯overlayを無効にする
 
-### Completed sequences
+## 3. Runtime structure contract
 
-- 丸寝: 寝床へ移動 → 丸寝transition → 寝息loop
-- 横寝: bond条件を満たす猫が寝床へ移動 → 横寝transition → 寝息loop
-- 休息: 低energyで寝床へ移動 → 伏せる → 香箱loop
-- 窓観察: window anchorへ移動 → 見る → 静かな保持 → 向き直る
-- 一人遊び: rugへ移動 → notice → crouch → pounce → catch → recover → sit
-- 微細動作: idleの間にblink、ear、look、tailを順序付きで再生
+| Item | v0.8.1 contract |
+|---|---|
+| App version | `0.8.1` |
+| Engine | Phaser `4.2.1`、WebGL固定 |
+| Room source-space | 852×1846 |
+| Camera | centered cover、fractional zoom |
+| Canvas scale | `Phaser.Scale.NONE`、CSSはviewport実寸、backing storeはDPR最大2倍 |
+| World layers | room、shadow、furniture、cat、foreground、light |
+| Cat art | 8 exact poses |
+| Behavior interface | 21 logical states |
+| Derived textures | 原本room由来の透明CanvasTexture 2件 |
+| Cat base scale | 0.75 |
+| Input | Canvas内形状判定 |
+| Save schema | `version: 6` |
+| LocalStorage key | `tail-room-state-v6` |
 
-## 3. Automated evidence
+状態と保存の意味は変更しません。描画版を0.8.1へ上げることを理由に保存schemaを変更しません。
 
-| Evidence | Result | Measured value |
+## 4. Responsive camera contract
+
+| CSS viewport | Zoom | Draw size | Expected crop |
+|---:|---:|---:|---|
+| 320×667 | 0.3755868545 | 320×693.33 | 上下各約13.17 CSS px |
+| 393×852 | 0.4615384615 | 393.23×852 | 左右各約0.12 CSS px |
+| 430×932 | 0.5048754063 | 430.15×932 | 左右各約0.08 CSS px |
+
+393×852と430×932は実質無欠損です。320×667では上下の壁・床だけが切れ、窓、棚、sofa、rug、寝床、食器、玩具は欠損しないことをPNGで確認します。
+
+## 5. Cat pose and logical-state contract
+
+exact pose:
+
+| Pose | Rect `x,y,w,h` | Pivot `x,y` |
 |---|---|---|
-| Runtime／evidence commit | 確定 | `26935545f03c11df63bc6ddc4a929ec9bab53ee3` |
-| Local／CI quality gate | 合格 | exit 0、41 JavaScript構文検査、47 tests pass |
-| Quality Gate | 合格 | [Run 54](https://github.com/2hg7trp7rv-design/Cat_room/actions/runs/32097369705)、job `95591222211`、`completed / success` |
-| WebGL renderer | 合格 | Chrome `151.0.7922.108`、WebGL 1、ANGLE SwiftShader、Canvas 1個、context lostなし、fallbackなし |
-| Pixel manifest | 合格 | 131 created、131 non-empty、0 reused、`temporary: false` |
-| Layer order | 合格 | room、shadow、furniture、cat、foreground、light |
-| Japanese UI font | 合格 | `Tail Room JP` 400／700、両face `loaded` |
-| First meeting | 合格 | ゆっくり撫でる → 名前panel → 既定名`こむぎ` → RoomScene |
-| Room input | 合格 | cat、food sheet、bed touch feedback、toyをCanvas上の位置から操作 |
-| Toy sequence | 合格 | walk → notice → crouch → pounce → catch → recover → sit、完了後にroom toyを復元 |
-| Sleep sequence | 合格 | walk → curl transition → curl、12秒deadlineに対し2,990msでcurl到達 |
-| 320×667 | 合格 | Canvas 320×667、横overflowなし、`room-320x667.png` |
-| 393×852 | 合格 | Canvas 393×852、横overflowなし、昼／夜PNGとinteraction PNG |
-| 430×932 | 合格 | Canvas 430×932、横overflowなし、`room-430x932.png` |
-| Smoke artifact | 取得済み | ID `9310409064`、`tail-room-v0.8-webgl-smoke` |
+| `seated` | `75,116,267,342` | `95,333` |
+| `standing` | `346,93,411,363` | `214,351` |
+| `walking` | `763,93,410,365` | `217,357` |
+| `loaf` | `1224,252,269,222` | `136,204` |
+| `side-lie` | `13,665,471,220` | `237,190` |
+| `curl` | `487,650,287,231` | `151,216` |
+| `crouch` | `783,506,312,381` | `147,366` |
+| `pounce` | `1111,500,397,370` | `93,356` |
 
-Artifact digestは`sha256:684446e1ea24405c1600c2a2f698bb8dcf0db2702f3117b3f4233dc2de523b2a`、expires atは`2026-11-16T03:57:51Z`。ローカル出力先の契約名は`artifacts/v0.8/`である。
+logical state sequence:
 
-3サイズ検査は、1200×1100のdesktop headless Chrome内で`#app`とCanvasを320×667、393×852、430×932へ固定し、要素単位のPNGを取得する。mobile viewport、mobile UA、DPR、iPhone emulationではないため、実機相当の証拠には使わない。
+- `idle`, `blink`, `ear`, `look`, `tail` → `seated`
+- `stand` → `standing`
+- `sit` → `standing`, `standing`, `seated`, `seated`, `seated`, `seated`
+- `loaf` → `loaf`
+- `lie` → `side-lie`
+- `walk` → `standing`, `walking`
+- `turn` → `standing`, `walking`, `walking`, `standing`, `standing`
+- `sleep-curl-transition` → `loaf`, `loaf`, `side-lie`, `side-lie`, `curl`, `curl`, `curl`, `curl`
+- `sleep-curl` → `curl`
+- `sleep-side-transition` → `loaf`, `loaf`, `curl`, `curl`, `side-lie`, `side-lie`, `side-lie`
+- `sleep-side` → `side-lie`
+- `play-notice` → `loaf`, `loaf`, `crouch`, `crouch`
+- `play-crouch` → `crouch`
+- `play-pounce` → `pounce`
+- `play-catch` → `crouch`
+- `play-recover` → `pounce`, `pounce`, `crouch`, `crouch`, `standing`, `standing`
+- `welcome` → `seated`, `standing`, `standing`, `seated`, `seated`
 
-### Failure history
+21 stateの時間・順序は維持しますが、固有作画は8姿勢です。non-loop transitionは終端poseを保持できる長さへ拡張し、action完了前に先頭へ巻き戻って見えないようにします。同じposeを複数回表示しても追加frame完成とは数えません。
 
-- Run 48: 静的checkは通過したが、Phaser 4のContainerに存在しない`setDisplayOrigin()`を`Cat`から呼び、scene遷移時に例外となってWebGL smokeが失敗した。呼び出しを削除し、Container entityでの再使用を禁じるarchitecture testを追加した
-- Run 49: 日本語screenshot font setupがGitHub runnerのapt mirrorで停止し、2回目のattemptも含めて最終的に`cancelled`となった
-- Run 50: apt取得へtimeoutを追加したがsetupを完了できず、`failure`となった。`Tail Room JP`をリポジトリへ同梱し、workflowからapt依存を除去した
-- Run 51: 同梱fontの400／700を両方`loaded`と判定する一方、未使用の400を明示ロードしていなかったため、Room 3ケースが30秒timeoutした。`document.fonts.load()`で両weightを先に読み込み、match数とstatusを検査するよう修正した
-- Run 53: スクリーンショット取得中に状態pollingが止まり、短い`play-recover`を見逃したfalse-negative。behaviorの`onStateChange`を使うbounded motion traceへ変更し、sequenceの全状態を取得するよう修正した
-- 上記runは合格証拠へ含めない。最終判定はRun 54のreportとartifactによる
+### Pose-local input and prop metadata
 
-## 4. Vercel evidence
+`DIRECT_CAT_PET_ZONES`は各poseのfloor pivot相対`x,y,w,h`です。8姿勢すべてに`head`、`back`、`tail`を定義し、leftは表のx、rightはmirrorしたxで判定します。
 
-| Evidence | Result | Measured value |
+| Pose | Head `x,y,w,h` | Back `x,y,w,h` | Tail `x,y,w,h` |
+|---|---|---|---|
+| `seated` | `-80,-333,165,190` | `-64,-205,144,110` | `55,-140,117,145` |
+| `standing` | `-214,-350,150,205` | `-78,-236,180,125` | `82,-351,115,184` |
+| `walking` | `-217,-354,150,205` | `-82,-238,188,128` | `92,-357,101,185` |
+| `loaf` | `-136,-204,130,165` | `-30,-145,112,105` | `52,-158,81,160` |
+| `side-lie` | `-237,-190,145,160` | `-98,-132,215,105` | `94,-116,140,140` |
+| `curl` | `-151,-204,130,160` | `-42,-132,112,105` | `20,-174,116,175` |
+| `crouch` | `-147,-214,145,180` | `-30,-175,155,125` | `66,-366,99,255` |
+| `pounce` | `-93,-215,150,185` | `48,-180,185,120` | `96,-356,208,215` |
+
+`DIRECT_CAT_PROP_ANCHORS.crouch.caughtToy`はpivot相対`-104,-8`です。leftではx=-104、rightではx=+104へmirrorし、`play-catch`中の派生toyを前足へ追従させます。
+
+## 6. Room interaction and layering contract
+
+source-space anchor:
+
+| Anchor | Position |
+|---|---:|
+| `center-idle` / `carrier` | `370,1320` |
+| `rug-play` | `551,1510` |
+| `bed-sleep` | `744,1170` |
+| `bowl-wait` | `280,1450` |
+| `window-watch` | `430,1000` |
+
+room、shadow、furniture、cat、foreground、lightの6 layer順を維持します。猫、食器、寝床、玩具、窓はCanvas内の形状判定を使い、透明DOM hotspotへ戻しません。
+
+原本roomには玩具が焼き込まれています。v0.8.1 runtimeは境界RMSE探索と目視で選んだ同じroom textureの床subframe`toy-floor-cover`、rect `271,1457,92,92`を登録し、destination `552,1493`へ`play-catch`中だけ表示して焼き込み玩具を隠します。同時に原本roomのtight crop `510,1444,88,94`をruntime canvasへ切り出し、18-point polygon clipした透明CanvasTexture `direct.toy-ball`を猫の近くへ表示します。新しいbinaryや再生成画像は使いません。
+
+寝床には原本roomのcrop `620,1075,232,145`を10-point polygon clipした透明CanvasTexture `direct.bed-foreground`を実装済みです。WebGL非対応のGeometryMaskは使いません。`DIRECT_DERIVED_TEXTURES`はこのbed foregroundとcaught toyの2件です。ただし、本格的な玩具なしclean plate、玩具を咥えた最終専用cat frame、検証済みの最終寝床アートは未完成です。暫定派生が動作しても、遊び・睡眠の最終アート完成とは判定しません。
+
+## 7. Automated evidence
+
+| Evidence | Result | Required result |
 |---|---|---|
-| Project | 確定 | `cats-room`、project ID `prj_x77pFkTy2D8nBYq0QKDZZtV59Bz3` |
-| Deployment ID | 確定 | `dpl_H2kVdQKouknE9S76azQ27vk9iKGx` |
-| Deployment state | 合格 | `READY / production`、`aliasError: null` |
-| Served revision | 合格 | GitHub SHA `26935545f03c11df63bc6ddc4a929ec9bab53ee3`と一致 |
-| Canonical URL | 合格 | `https://cat-certificate.vercel.app`、HTTP 200、title `Tail Room — Creator Preview 0.8` |
-| Bundled font | 合格 | `/assets/fonts/noto-sans-jp-400.ttf`、HTTP 200、`content-type: font/ttf` |
-| Build metadata | 合格 | `/build-meta.json`: version `0.8.0`、engine `phaser-4.2.1`、`runtimeFetches: false` |
+| Final source commit | `PENDING` | v0.8.1の単一SHAを記録 |
+| Source PNG SHA | `PENDING` | 3 filesがsource contractと一致 |
+| Dist PNG SHA | `PENDING` | sourceとbyte-for-byte一致 |
+| Local quality gate | `PENDING` | `npm run check` exit 0 |
+| GitHub Actions | `PENDING` | 新Quality Gate `completed / success` |
+| WebGL renderer | `PENDING` | fallbackなし、context lossなし |
+| Direct-art preload | `PENDING` | 3 files、寸法、pose frameを確認 |
+| Layer order | `PENDING` | 6 layer順一致 |
+| Pose pet zones | `PENDING` | 8 poseのhead／back／tailと左右mirror一致 |
+| First meeting | `PENDING` | `IMG_3038.png`、撫で、命名、Room遷移 |
+| Canvas input | `PENDING` | cat、food、bed、toy、window |
+| Toy cover / caught toy | `PENDING` | catch中だけ床coverと派生ballへ切り替わり、paw anchorをmirrorし、二重表示されない |
+| Sleep placement / foreground | `PENDING` | curlがbedへ収まり、masked foregroundが正しく遮蔽する |
+| 320×667 | `PENDING` | crop・overflow・input一致 |
+| 393×852 | `PENDING` | visual parity・input一致 |
+| 430×932 | `PENDING` | visual parity・input一致 |
+| Smoke artifact | `PENDING` | reportとPNGを保存 |
 
-旧deploymentがREADYでもv0.8の証拠には使わない。上記deployment ID、runtime／evidence SHA、正本URLの応答を同じ報告へ結び付けた。
+CI screenshotはsoftware WebGLの証拠です。mobile UA、DPR、iPhone hardwareの証拠とは区別します。
 
-## 5. Physical-device boundary
+## 8. Historical boundary
+
+旧v0.8.0ではQuality Gate Run 54とVercel deploymentが成功しました。しかし対象は、承認画像をruntimeへ使わないprocedural-art実装です。そのため次の値は履歴としてのみ残し、v0.8.1の判定へ流用しません。
+
+- old runtime/evidence SHA: `26935545f03c11df63bc6ddc4a929ec9bab53ee3`
+- old Quality Gate: Run 54
+- old deployment: `dpl_H2kVdQKouknE9S76azQ27vk9iKGx`
+- old artifact: `9310409064`
+
+旧版がCIに合格したことは、direct-art版のasset load、camera、visual parity、hit位置、性能を証明しません。
+
+## 9. Vercel evidence
+
+| Evidence | Result |
+|---|---|
+| Project | `cats-room` / `prj_x77pFkTy2D8nBYq0QKDZZtV59Bz3` |
+| Canonical URL | `https://cat-certificate.vercel.app` |
+| v0.8.1 deployment ID | `PENDING` |
+| v0.8.1 deployment state | `PENDING` |
+| Served GitHub SHA | `PENDING` |
+| `/build-meta.json` | `PENDING` |
+| Three direct PNG HTTP response | `PENDING` |
+
+URLがHTTP 200でも、served SHAとasset SHAが一致するまでv0.8.1 production合格とは扱いません。
+
+## 10. Physical-device boundary
 
 ### 未実施
 
 - 物理iPhoneでのFirstMeetingSceneとRoomScene
 - iOS SafariでのWebGL描画
-- ゆっくり撫でる入力と、単純tapの区別
-- 猫、食器、寝床、玩具の表示位置とhit位置の一致
-- 夜間の目、鼻、耳、足、尾の視認性
-- sheet、keyboard、safe-area、orientationの確認
+- fractional zoomとLINEAR samplingの見え方
+- ゆっくり撫でる入力とtapの区別
+- 猫、食器、寝床、玩具、窓の表示位置とhit位置の一致
+- 320幅相当での上下crop
 - background移行と復帰後の状態・描画一致
 - 実GPUの目標60fps／最低30fps
 
@@ -115,18 +206,21 @@ Artifact digestは`sha256:684446e1ea24405c1600c2a2f698bb8dcf0db2702f3117b3f4233d
 | Average／minimum fps | `NOT TESTED` |
 | First meeting | `NOT TESTED` |
 | Room input | `NOT TESTED` |
-| Night readability | `NOT TESTED` |
+| Visual parity | `NOT TESTED` |
 | Background resume | `NOT TESTED` |
 | Screenshot／screen recording | `NOT TESTED` |
 
-## 6. Acceptance rule
+## 11. Acceptance rule
 
-v0.8のsoftware release checkpointは、次の5条件をSHA `26935545f03c11df63bc6ddc4a929ec9bab53ee3`で満たした。
+v0.8.1 software gateは、同一commit SHAで次をすべて満たした時だけ合格とします。
 
-1. 最終treeで`npm run check`がexit 0
-2. 同一SHAのQuality Gateがsuccess
-3. WebGL smokeで3対象サイズ、131 textures、6 layers、初回導線、Room入力が合格
-4. 同一SHAのVercel deploymentがREADYで正本URLがHTTP 200
-5. artifactのreportとPNGを取得して報告へ添付
+1. 3正本PNGのsource／dist SHAが上記contractと一致
+2. `npm run check`がexit 0
+3. 新しいQuality Gateがsuccess
+4. 3サイズWebGL smokeでdirect-art、6 layer、Canvas入力、初回導線、玩具cover、睡眠配置が合格
+5. 日中背景と8 exact poseのvisual parityが合格
+6. 同一SHAのVercel deploymentがREADY
+7. canonical URLが同じrevisionとassetを配信
+8. reportとPNG artifactを保存
 
-物理iPhoneの項目は別のhardware gateであり、現時点では未完。上記5条件を満たしても「実iPhone検証済み」「iOS Safari検証済み」「実GPU 30fps以上」とは書かない。次のv0.9作業へ入る前に、このhardware gateを先に閉じる。
+現在は上記を満たしたという証拠がまだないため、判定は`PENDING`です。物理iPhoneは別のhardware gateであり、software gate後も実機確認なしに全面合格とは書きません。

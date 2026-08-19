@@ -2,6 +2,8 @@
 
 更新日: 2026-08-18 JST
 
+> **履歴資料です。** この文書は旧v0.8.0 procedural-art版の実装契約であり、現行v0.8.1の表示正本ではありません。承認された3 PNGを直接使う現行契約は[`WORK_HANDOFF.md`](WORK_HANDOFF.md)、[`VISUAL_BIBLE.md`](VISUAL_BIBLE.md)、[`V08_VALIDATION.md`](V08_VALIDATION.md)を優先してください。
+
 ## Scope
 
 v0.8は、v0.7のWebGL・状態・入力・保存互換性を維持しながら、世界をpixel artへ置き換え、猫の生命感、代表的な睡眠、代表的な一人遊び、温かいUIを成立させる。

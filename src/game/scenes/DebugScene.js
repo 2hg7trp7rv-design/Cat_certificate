@@ -12,8 +12,8 @@ export class DebugScene extends Phaser.Scene {
   create() {
     this.samples.length = 0
     this.lastRenderAt = 0
-    this.panel = this.add.rectangle(10, 96, Math.max(280, this.scale.width - 20), 110, 0x15110e, 0.78).setOrigin(0)
-    this.label = this.add.text(22, 108, '', {
+    this.panel = this.add.rectangle(0, 0, 1, 1, 0x15110e, 0.78).setOrigin(0)
+    this.label = this.add.text(0, 0, '', {
       color: '#fff7ec',
       fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif',
       fontSize: '12px',
@@ -23,9 +23,25 @@ export class DebugScene extends Phaser.Scene {
     this.scene.bringToTop()
     this.lastSampleAt = performance.now()
     this.warmupUntil = this.lastSampleAt + 1000
-    this.onResize = gameSize => this.panel.setSize(Math.max(280, gameSize.width - 20), 110)
+    this.onResize = () => this.layoutBackingAwareOverlay()
     this.scale.on('resize', this.onResize)
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.scale.off('resize', this.onResize))
+    this.layoutBackingAwareOverlay()
+  }
+
+  backingScale() {
+    return Math.max(1, Number(this.scale.displayScale?.x) || 1)
+  }
+
+  layoutBackingAwareOverlay() {
+    const backingScale = this.backingScale()
+    this.panel
+      .setPosition(10 * backingScale, 96 * backingScale)
+      .setSize(Math.max(280 * backingScale, this.scale.width - 20 * backingScale), 110 * backingScale)
+    this.label
+      .setPosition(22 * backingScale, 108 * backingScale)
+      .setFontSize(`${12 * backingScale}px`)
+      .setLineSpacing(5 * backingScale)
   }
 
   update(time) {
@@ -52,11 +68,12 @@ export class DebugScene extends Phaser.Scene {
     const internalSize = `${this.scale.gameSize.width}×${this.scale.gameSize.height}`
     const displaySize = `${Math.round(canvas?.clientWidth || 0)}×${Math.round(canvas?.clientHeight || 0)}`
     const layerNames = room?.world?.layerNames || window.__TAIL_ROOM_QA__.layers || []
+    const roomZoom = Number(room?.cameras?.main?.zoom || 0)
     this.label.setText([
-      `Tail Room v0.8.0 / Phaser 4.2.1 / WebGL pixel`,
+      `Tail Room v0.8.1 / Phaser 4.2.1 / WebGL direct art`,
       `Canvas ${internalSize} → ${displaySize}  FPS ${fps.toFixed(1)}  min ${minimum.toFixed(1)}  avg ${average.toFixed(1)}`,
       `Layers ${layerNames.join(' · ')}`,
-      `Context ${window.__TAIL_ROOM_QA__.contextLost ? 'LOST' : 'active'}  World 2× / 8px grid`,
+      `Context ${window.__TAIL_ROOM_QA__.contextLost ? 'LOST' : 'active'}  Source 852×1846 / zoom ${roomZoom.toFixed(4)}`,
     ])
     window.__TAIL_ROOM_QA__.displaySize = displaySize
     window.__TAIL_ROOM_QA__.fps = {
@@ -72,7 +89,7 @@ export class DebugScene extends Phaser.Scene {
 
   drawInputShapes(room) {
     this.hitGraphics.clear()
-    this.hitGraphics.lineStyle(1, 0x4fffc4, 0.68)
+    this.hitGraphics.lineStyle(this.backingScale(), 0x4fffc4, 0.68)
     const camera = room?.cameras?.main
     if (!camera) return
     const worldViewX = camera.scrollX + camera.width / 2 - camera.width / (2 * camera.zoom)

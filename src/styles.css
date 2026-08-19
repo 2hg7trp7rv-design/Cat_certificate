@@ -112,7 +112,7 @@ html[data-qa="true"] .app-shell {
   display: block;
   margin: auto;
   outline: none;
-  image-rendering: pixelated;
+  image-rendering: auto;
   touch-action: none;
 }
 
@@ -143,6 +143,19 @@ html[data-qa="true"] .app-shell {
   font-weight: 900;
   letter-spacing: .16em;
   line-height: 1;
+}
+
+.intro-brand-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.intro-emblem {
+  width: 112px;
+  height: 112px;
+  object-fit: contain;
+  image-rendering: auto;
 }
 
 .brand span {
@@ -493,7 +506,7 @@ html[data-qa="true"] .app-shell {
 .creator-section-label {
   margin: 0;
   color: var(--terracotta-dark);
-  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  font-family: "Tail Room JP", ui-monospace, "SFMono-Regular", Menlo, monospace;
   font-size: 9px;
   font-weight: 900;
   letter-spacing: .12em;

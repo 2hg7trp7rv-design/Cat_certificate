@@ -8,34 +8,46 @@ export {
   WORLD_CENTER_Y,
   WORLD_HEIGHT,
   WORLD_WIDTH,
-  WORLD_ZOOM,
+  calculateWorldZoom,
   configureWorldCamera,
 } from './world/WorldCamera.js'
 
 export const DESIGN_WIDTH = 393
 export const DESIGN_HEIGHT = 852
-export function createGameConfig({ store, ui, onReady } = {}) {
+export function createGameConfig({
+  store,
+  ui,
+  onReady,
+  preserveDrawingBuffer = false,
+  hiDpiMetrics = null,
+} = {}) {
+  const backingWidth = Math.max(1, Math.round(Number(hiDpiMetrics?.backingWidth) || DESIGN_WIDTH))
+  const backingHeight = Math.max(1, Math.round(Number(hiDpiMetrics?.backingHeight) || DESIGN_HEIGHT))
+  const initialZoom = Math.max(0.01, Number(hiDpiMetrics?.zoom) || 1)
+
   return {
     type: Phaser.WEBGL,
     parent: 'game',
-    width: DESIGN_WIDTH,
-    height: DESIGN_HEIGHT,
+    width: backingWidth,
+    height: backingHeight,
     backgroundColor: '#171411',
     transparent: false,
     banner: false,
     render: {
-      antialias: false,
-      antialiasGL: false,
-      pixelArt: true,
+      antialias: true,
+      antialiasGL: true,
+      pixelArt: false,
       smoothPixelArt: false,
-      roundPixels: true,
+      roundPixels: false,
       powerPreference: 'high-performance',
+      preserveDrawingBuffer: Boolean(preserveDrawingBuffer),
     },
     scale: {
-      mode: Phaser.Scale.RESIZE,
+      mode: Phaser.Scale.NONE,
       autoCenter: Phaser.Scale.NO_CENTER,
-      width: DESIGN_WIDTH,
-      height: DESIGN_HEIGHT,
+      width: backingWidth,
+      height: backingHeight,
+      zoom: initialZoom,
     },
     input: {
       activePointers: 3,

@@ -5,9 +5,9 @@ export class Bowl extends InteractiveObject {
   constructor(scene, x, y, onActivate) {
     super(scene, x, y, {
       name: 'bowl',
-      texture: 'pixel.furniture.bowl',
-      scale: 1,
-      hitArea: new Phaser.Geom.Ellipse(0, 0, 32, 22),
+      width: 160,
+      height: 125,
+      hitArea: new Phaser.Geom.Ellipse(0, 0, 160, 125),
       onActivate,
     })
   }

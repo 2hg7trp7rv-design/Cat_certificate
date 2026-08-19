@@ -4,12 +4,12 @@ import {
 } from '../systems/BehaviorSystem.js'
 
 export const DEFAULT_CAT_ANCHORS = Object.freeze({
-  'center-idle': Object.freeze({ x: 108, y: 382 }),
-  'rug-play': Object.freeze({ x: 108, y: 370 }),
-  'bed-sleep': Object.freeze({ x: 68, y: 378 }),
-  'bowl-wait': Object.freeze({ x: 132, y: 382 }),
-  'window-watch': Object.freeze({ x: 84, y: 350 }),
-  carrier: Object.freeze({ x: 108, y: 382 }),
+  'center-idle': Object.freeze({ x: 370, y: 1320 }),
+  'rug-play': Object.freeze({ x: 551, y: 1510 }),
+  'bed-sleep': Object.freeze({ x: 744, y: 1170 }),
+  'bowl-wait': Object.freeze({ x: 280, y: 1450 }),
+  'window-watch': Object.freeze({ x: 430, y: 1000 }),
+  carrier: Object.freeze({ x: 370, y: 1320 }),
 })
 
 export const MOTION_DURATION_MS = Object.freeze({
@@ -142,11 +142,12 @@ export const createBehaviorPlan = (intent, {
 
   if (id === 'sleep') {
     const pose = sleepPose === 'side' ? 'side' : 'curl'
+    const sleepAnchor = pose === 'side' ? 'center-idle' : 'bed-sleep'
     return plan(id, priority, [
-      moveStep('bed-sleep'),
+      moveStep(sleepAnchor),
       animationStep(`sleep-${pose}-transition`),
       animationStep(`sleep-${pose}`, { duration: Number.POSITIVE_INFINITY, loop: true }),
-    ], { source, controlKey: id, anchor: 'bed-sleep', sticky: true, sleepPose: pose })
+    ], { source, controlKey: id, anchor: sleepAnchor, sticky: true, sleepPose: pose })
   }
 
   if (id === 'wait-for-meal') {
@@ -237,7 +238,7 @@ const normalizeAnchor = value => {
 export class CatBehaviorController {
   constructor(cat, {
     anchors = {},
-    walkSpeed = 74,
+    walkSpeed = 210,
     maxTickMs = 100,
     seed = null,
     onActionStart,
@@ -251,7 +252,7 @@ export class CatBehaviorController {
     if (!cat) throw new TypeError('CatBehaviorController requires a cat')
     this.cat = cat
     this.anchors = { ...DEFAULT_CAT_ANCHORS, ...anchors }
-    this.walkSpeed = clamp(finiteNumber(walkSpeed, 74), 24, 240)
+    this.walkSpeed = clamp(finiteNumber(walkSpeed, 210), 80, 480)
     this.maxTickMs = clamp(finiteNumber(maxTickMs, 100), 16, 250)
     this.seedOverride = seed
     this.callbacks = {
@@ -527,7 +528,9 @@ export class CatBehaviorController {
   #runAnimationStep(action, step) {
     if (!step.runtime) {
       step.runtime = { startedAt: this.clock }
-      if (step.state === 'play-notice') this.cat?.setFacing?.('right')
+      // The play anchor is the ball contact point. After approaching from the
+      // rug, turn back toward it before showing the source crouch/pounce art.
+      if (step.state === 'play-notice') this.cat?.setFacing?.('left')
     }
     const elapsed = this.clock - step.runtime.startedAt
     this.#renderState(step.state, elapsed, step.loop)

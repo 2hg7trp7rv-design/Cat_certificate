@@ -1,4 +1,10 @@
 import Phaser from '../phaser.js'
+import {
+  DIRECT_ART_FILES,
+  DIRECT_CAT_PROP_ANCHORS,
+  DIRECT_CAT_POSES,
+  DIRECT_DERIVED_TEXTURES,
+} from '../art/DirectArtManifest.js'
 import { CatBehaviorController, DEFAULT_CAT_ANCHORS } from '../behavior/CatBehaviorController.js'
 import Bed from '../entities/Bed.js'
 import Bowl from '../entities/Bowl.js'
@@ -6,21 +12,32 @@ import Cat from '../entities/Cat.js'
 import InteractiveObject from '../entities/InteractiveObject.js'
 import Toy from '../entities/Toy.js'
 import AmbientRoomMotion from './AmbientRoomMotion.js'
+import { WORLD_CENTER_X, WORLD_CENTER_Y, WORLD_HEIGHT, WORLD_WIDTH } from './WorldCamera.js'
 
 export const ROOM_ANCHORS = DEFAULT_CAT_ANCHORS
 
 const CRITICAL_BEHAVIORS = new Set(['first-meeting', 'sleep', 'wait-for-meal', 'rest'])
+const QA_BRIDGE_KEY = '__TAIL_ROOM_QA_BRIDGE__'
+const QA_POSE_COMMANDS = Object.freeze({
+  seated: Object.freeze({ state: 'idle', elapsedMs: 0, loop: true }),
+  standing: Object.freeze({ state: 'walk', elapsedMs: 0, loop: true }),
+  walking: Object.freeze({ state: 'walk', elapsedMs: 115, loop: true }),
+  loaf: Object.freeze({ state: 'loaf', elapsedMs: 0, loop: true }),
+  'side-lie': Object.freeze({ state: 'sleep-side', elapsedMs: 0, loop: true }),
+  curl: Object.freeze({ state: 'sleep-curl', elapsedMs: 0, loop: true }),
+  crouch: Object.freeze({ state: 'play-crouch', elapsedMs: 0, loop: true }),
+  pounce: Object.freeze({ state: 'play-pounce', elapsedMs: 0, loop: true }),
+})
 
 const phaseLight = phase => ({
-  morning: { window: 0.68, lamp: 0.06, night: 0 },
-  day: { window: 0.48, lamp: 0.02, night: 0 },
-  evening: { window: 0.16, lamp: 0.3, night: 0.14 },
-  night: { window: 0.02, lamp: 0.58, night: 0.43 },
-}[phase] ?? { window: 0.48, lamp: 0.02, night: 0 })
+  morning: { window: 0, lamp: 0, night: 0 },
+  day: { window: 0, lamp: 0, night: 0 },
+  evening: { window: 0.025, lamp: 0.12, night: 0.12 },
+  night: { window: 0.015, lamp: 0.2, night: 0.46 },
+}[phase] ?? { window: 0, lamp: 0, night: 0 })
 
 const centerOf = object => ({ x: object.x, y: object.y })
 
-// Keep Phaser Rectangle instances out of the browser-smoke/report boundary.
 const boundsOf = object => {
   const bounds = object?.getBounds?.()
   if (!bounds) return null
@@ -29,20 +46,33 @@ const boundsOf = object => {
   const width = Number(bounds.width)
   const height = Number(bounds.height)
   if (![x, y, width, height].every(Number.isFinite)) return null
-  return {
-    x,
-    y,
-    width,
-    height,
-    right: x + width,
-    bottom: y + height,
-  }
+  return { x, y, width, height, right: x + width, bottom: y + height }
 }
 
+const renderStateOf = object => object ? {
+  name: object.name || null,
+  type: object.type || object.constructor?.name || null,
+  texture: object.texture?.key ?? null,
+  frame: object.frame?.name ?? null,
+  x: Number(object.x),
+  y: Number(object.y),
+  originX: Number(object.originX ?? 0),
+  originY: Number(object.originY ?? 0),
+  scaleX: Number(object.scaleX ?? 1),
+  scaleY: Number(object.scaleY ?? 1),
+  displayWidth: Number(object.displayWidth ?? object.width ?? 0),
+  displayHeight: Number(object.displayHeight ?? object.height ?? 0),
+  visible: Boolean(object.visible),
+  alpha: Number(object.alpha ?? 1),
+  flipX: Boolean(object.flipX),
+  bounds: boundsOf(object),
+} : null
+
 /**
- * The v0.8 room is composed at low art resolution. Every visible concern is a
- * separate texture and layer; the camera is responsible for the fixed 2x
- * presentation scale.
+ * The approved room PNG is the visible source of truth. Its furniture, light,
+ * material and perspective are never reconstructed with procedural shapes.
+ * Separate Phaser layers remain for the cat, its shadow, local lighting and
+ * Canvas hit geometry, so state and interaction do not return to DOM overlays.
  */
 export class RoomWorld {
   constructor(scene, {
@@ -63,79 +93,89 @@ export class RoomWorld {
     this.foregroundLayer = scene.add.layer().setName('foregroundLayer')
     this.lightLayer = scene.add.layer().setName('lightLayer')
     this.layerNames = ['roomLayer', 'shadowLayer', 'furnitureLayer', 'catLayer', 'foregroundLayer', 'lightLayer']
-    const initialCatPosition = firstMeeting ? { x: 108, y: 350 } : ROOM_ANCHORS.carrier
+    const initialCatPosition = ROOM_ANCHORS.carrier
 
-    this.backdrop = scene.add.image(108, 236, 'pixel.room.backdrop')
-    this.exterior = scene.add.image(82, 136, 'pixel.room.exterior')
-    this.roomLayer.add([this.backdrop, this.exterior])
+    this.backdrop = scene.add.image(WORLD_CENTER_X, WORLD_CENTER_Y, DIRECT_ART_FILES.room.key, '__BASE')
+      .setName('approvedRoomImage')
+    this.roomLayer.add(this.backdrop)
 
-    this.furnitureContactShadow = scene.add.image(132, 338, 'pixel.shadow.furniture-contact')
-      .setBlendMode(Phaser.BlendModes.MULTIPLY)
-    this.catContactShadow = scene.add.image(initialCatPosition.x, initialCatPosition.y + 1, 'pixel.shadow.cat-contact')
-      .setScale(0.72)
-      .setBlendMode(Phaser.BlendModes.MULTIPLY)
-    this.shadowLayer.add([this.furnitureContactShadow, this.catContactShadow])
+    this.catContactShadow = scene.add.ellipse(
+      initialCatPosition.x,
+      initialCatPosition.y + 10,
+      210,
+      48,
+      0x2b160c,
+      0.28,
+    ).setBlendMode(Phaser.BlendModes.MULTIPLY)
+    this.shadowLayer.add(this.catContactShadow)
 
-    this.window = new InteractiveObject(scene, 82, 136, {
+    // Canvas hit regions over objects already present in the exact room image.
+    // They do not draw replacement furniture and never create DOM hotspots.
+    this.window = new InteractiveObject(scene, 560, 450, {
       name: 'window',
-      texture: 'pixel.room.window',
-      hitArea: new Phaser.Geom.Rectangle(-52, -64, 104, 124),
+      width: 420,
+      height: 430,
+      hitArea: new Phaser.Geom.Rectangle(-210, -215, 420, 430),
       onActivate: () => onWindow?.(),
     })
-    this.leftCurtain = scene.add.image(30, 136, 'pixel.furniture.curtain')
-    this.rightCurtain = scene.add.image(134, 136, 'pixel.furniture.curtain').setFlipX(true)
-    this.shelf = scene.add.image(72, 264, 'pixel.furniture.shelf')
-    this.sofa = scene.add.image(136, 300, 'pixel.furniture.sofa')
-    this.tower = scene.add.image(168, 232, 'pixel.furniture.tower').setScale(0.62)
-    this.lamp = scene.add.image(38, 300, 'pixel.furniture.lamp')
-    this.rug = scene.add.image(108, 367, 'pixel.furniture.rug')
-    this.bed = new Bed(scene, 68, 376, () => onBed?.())
-    this.bowl = new Bowl(scene, 166, 388, () => onFood?.())
-    this.toy = new Toy(scene, 126, 388, () => onToy?.())
-    this.furnitureLayer.add([
-      this.window,
-      this.leftCurtain,
-      this.rightCurtain,
-      this.shelf,
-      this.sofa,
-      this.tower,
-      this.lamp,
-      this.rug,
-      this.bed,
-      this.bowl,
-      this.toy,
-    ])
+    this.bed = new Bed(scene, 740, 1120, () => onBed?.())
+    this.bowl = new Bowl(scene, 146, 1410, () => onFood?.())
+    this.toy = new Toy(scene, 552, 1490, () => onToy?.())
+    this.toyFloorCover = scene.add.image(552, 1493, DIRECT_ART_FILES.room.key, 'toy-floor-cover')
+      .setName('toyFloorCover')
+      .setVisible(false)
+    this.furnitureLayer.add([this.toyFloorCover, this.window, this.bed, this.bowl, this.toy])
 
-    this.cat = new Cat(scene, initialCatPosition.x, initialCatPosition.y, { scale: 0.8 })
-    this.catLayer.add(this.cat)
+    this.caughtToy = scene.add.image(
+      initialCatPosition.x,
+      initialCatPosition.y,
+      DIRECT_DERIVED_TEXTURES.caughtToy.key,
+    ).setName('caughtToy').setVisible(false)
+    this.cat = new Cat(scene, initialCatPosition.x, initialCatPosition.y, { scale: 0.75 })
+    this.catLayer.add([this.caughtToy, this.cat])
 
-    this.plant = scene.add.image(164, 304, 'pixel.furniture.plant')
-    this.foregroundLayer.add(this.plant)
+    this.bedForeground = scene.add.image(
+      620,
+      1075,
+      DIRECT_DERIVED_TEXTURES.bedForeground.key,
+    )
+      .setName('bedForeground')
+      .setOrigin(0)
+    this.foregroundLayer.add(this.bedForeground)
 
-    this.windowLight = scene.add.image(96, 244, 'pixel.light.window-day')
+    this.nightWash = scene.add.rectangle(
+      WORLD_CENTER_X,
+      WORLD_CENTER_Y,
+      WORLD_WIDTH,
+      WORLD_HEIGHT,
+      0x26384b,
+      0,
+    ).setBlendMode(Phaser.BlendModes.MULTIPLY)
+    this.windowLight = scene.add.rectangle(560, 520, 430, 560, 0xffdda0, 0)
       .setBlendMode(Phaser.BlendModes.ADD)
-    this.nightWash = scene.add.image(108, 236, 'pixel.light.night-wash')
-      .setBlendMode(Phaser.BlendModes.MULTIPLY)
-    this.lampGlow = scene.add.image(46, 292, 'pixel.light.lamp-glow')
+    this.lampGlow = scene.add.ellipse(218, 720, 330, 380, 0xffb24e, 0)
       .setBlendMode(Phaser.BlendModes.ADD)
     this.lightLayer.add([this.nightWash, this.windowLight, this.lampGlow])
 
     this.ambientMotion = new AmbientRoomMotion(scene, {
       roomLayer: this.roomLayer,
-      curtains: [this.leftCurtain, this.rightCurtain],
       lampGlow: this.lampGlow,
       windowLight: this.windowLight,
     })
     this.motionTrace = []
     this.behavior = new CatBehaviorController(this.cat, {
       anchors: ROOM_ANCHORS,
-      onPosition: ({ x, y }) => this.catContactShadow.setPosition(x, y + 1),
+      onPosition: ({ x, y }) => {
+        this.catContactShadow.setPosition(x, y + 10)
+        this.syncCaughtToy()
+      },
       onStateChange: ({ action, state }) => {
         const previous = this.motionTrace.at(-1)
         if (previous?.action !== action || previous?.state !== state) {
           this.motionTrace.push({
             action: action ?? null,
             state: state ?? null,
+            pose: this.cat.getMotionState().pose,
             clock: Number(this.behavior?.clock ?? 0),
           })
           if (this.motionTrace.length > 64) this.motionTrace.shift()
@@ -144,8 +184,6 @@ export class RoomWorld {
         this.setToyCaught(carryingToy)
       },
       onActionComplete: ({ id, reason }) => {
-        // Completion also covers interruption and stop paths. Never leave the
-        // room prop hidden after a caught-toy frame is replaced.
         this.setToyCaught(false)
         if (id === 'player-play' && reason === 'completed') onPlayComplete?.()
       },
@@ -156,11 +194,94 @@ export class RoomWorld {
     } else {
       this.behavior.reactToVisit()
     }
+
+    this.installQaBridge()
+  }
+
+  installQaBridge() {
+    if (typeof window === 'undefined'
+      || typeof document === 'undefined'
+      || document.documentElement.dataset.qa !== 'true') return this
+
+    const allowedTextureKeys = new Set([
+      ...Object.values(DIRECT_ART_FILES).map(file => file.key),
+      ...Object.values(DIRECT_DERIVED_TEXTURES).map(texture => texture.key),
+    ])
+    const bridge = Object.freeze({
+      version: 1,
+      inspect: () => this.getQaRenderInspection(),
+      getTextureSource: key => {
+        if (!allowedTextureKeys.has(key) || !this.scene?.textures?.exists?.(key)) return null
+        return this.scene.textures.get(key).getSourceImage()
+      },
+      setPose: (poseName, facing = 'right') => this.setQaPose(poseName, facing),
+    })
+    this.qaBridge = bridge
+    window[QA_BRIDGE_KEY] = bridge
+    return this
+  }
+
+  setQaPose(poseName, facing = 'right') {
+    const command = QA_POSE_COMMANDS[poseName]
+    if (!command || !DIRECT_CAT_POSES[poseName]) throw new RangeError(`Unknown QA cat pose: ${poseName}`)
+    this.behavior?.stop({ resetPose: false })
+    this.setToyCaught(false)
+    this.scene?.tweens?.killTweensOf?.(this.cat.pixelSprite)
+    this.cat.pixelSprite.setY(0)
+    this.cat
+      .setWorldPosition(ROOM_ANCHORS['center-idle'].x, ROOM_ANCHORS['center-idle'].y)
+      .setFacing(facing)
+      .setMotionState(command.state, command)
+    this.catContactShadow.setPosition(this.cat.x, this.cat.y + 10)
+    this.syncCaughtToy()
+    return this.getQaRenderInspection()
+  }
+
+  getQaRenderInspection() {
+    const camera = this.scene?.cameras?.main
+    const displayList = (this.scene?.children?.list ?? []).map((object, index) => ({
+      index,
+      name: object.name || null,
+      type: object.type || object.constructor?.name || null,
+    }))
+    return {
+      camera: camera ? {
+        scrollX: Number(camera.scrollX),
+        scrollY: Number(camera.scrollY),
+        zoom: Number(camera.zoom),
+        width: Number(camera.width),
+        height: Number(camera.height),
+      } : null,
+      displayList,
+      layerOrder: displayList
+        .filter(object => this.layerNames.includes(object.name))
+        .map(object => object.name),
+      layerChildren: this.layerNames.map(name => {
+        const layer = this.scene?.children?.list?.find(object => object.name === name)
+        return {
+          name,
+          children: (layer?.list ?? []).map(object => object.name || object.type || object.constructor?.name || null),
+        }
+      }),
+      cat: {
+        pose: this.cat.poseName,
+        facing: this.cat.facing,
+        container: renderStateOf(this.cat),
+        sprite: renderStateOf(this.cat.pixelSprite),
+      },
+      room: renderStateOf(this.backdrop),
+      toy: renderStateOf(this.toy),
+      toyFloorCover: renderStateOf(this.toyFloorCover),
+      caughtToy: renderStateOf(this.caughtToy),
+      bedForeground: renderStateOf(this.bedForeground),
+    }
   }
 
   update(snapshot) {
     this.snapshot = snapshot
-    const phase = snapshot?.time?.phase ?? 'day'
+    // First contact presents the approved room and cat colors without a
+    // time-of-day wash. The real-life clock takes over after naming.
+    const phase = this.firstMeeting ? 'day' : snapshot?.time?.phase ?? 'day'
     const sleeping = Boolean(snapshot?.time?.sleeping)
     const lighting = phaseLight(phase)
 
@@ -178,7 +299,8 @@ export class RoomWorld {
   step(time) {
     if (!this.snapshot) return this
     this.behavior.update(this.snapshot, time)
-    this.catContactShadow.setPosition(this.cat.x, this.cat.y + 1)
+    this.catContactShadow.setPosition(this.cat.x, this.cat.y + 10)
+    this.syncCaughtToy()
     return this
   }
 
@@ -200,6 +322,9 @@ export class RoomWorld {
 
   setToyCaught(caught) {
     const carryingToy = Boolean(caught)
+    this.toyFloorCover?.setVisible(carryingToy)
+    this.caughtToy?.setVisible(carryingToy)
+    if (carryingToy) this.syncCaughtToy()
     this.toy?.setVisible(!carryingToy)
     if (this.toy?.input) this.toy.input.enabled = !carryingToy && !this.firstMeeting
     return this
@@ -207,6 +332,15 @@ export class RoomWorld {
 
   getInteractiveObjects() {
     return [this.window, this.bed, this.bowl, this.toy, this.cat]
+  }
+
+  syncCaughtToy() {
+    if (!this.caughtToy || !this.cat) return this
+    const sourceAnchor = DIRECT_CAT_PROP_ANCHORS[this.cat.poseName]?.caughtToy
+      ?? DIRECT_CAT_PROP_ANCHORS.crouch.caughtToy
+    const offsetX = this.cat.facing === 'right' ? -sourceAnchor.x : sourceAnchor.x
+    this.caughtToy.setPosition(this.cat.x + offsetX, this.cat.y + sourceAnchor.y)
+    return this
   }
 
   getQaSnapshot() {
@@ -238,6 +372,20 @@ export class RoomWorld {
       },
       visibility: {
         toy: Boolean(this.toy.visible),
+        toyFloorCover: Boolean(this.toyFloorCover.visible),
+        caughtToy: Boolean(this.caughtToy.visible),
+      },
+      art: {
+        roomTexture: this.backdrop.texture?.key ?? null,
+        roomFrame: this.backdrop.frame?.name ?? null,
+        roomDisplay: {
+          width: Number(this.backdrop.displayWidth),
+          height: Number(this.backdrop.displayHeight),
+        },
+        catTexture: this.cat.pixelSprite?.texture?.key ?? null,
+        catFrame: this.cat.pixelSprite?.frame?.name ?? null,
+        catPose: this.cat.getMotionState().pose,
+        bedForeground: this.bedForeground?.texture?.key ?? null,
       },
       behavior: this.behavior.getState(),
       motionTrace: this.motionTrace.map(entry => ({ ...entry })),
@@ -245,6 +393,10 @@ export class RoomWorld {
   }
 
   destroy() {
+    if (typeof window !== 'undefined' && window[QA_BRIDGE_KEY] === this.qaBridge) {
+      delete window[QA_BRIDGE_KEY]
+    }
+    this.qaBridge = null
     this.setToyCaught(false)
     this.behavior?.destroy()
     this.ambientMotion?.destroy()

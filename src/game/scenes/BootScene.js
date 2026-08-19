@@ -1,9 +1,18 @@
 import Phaser from '../phaser.js'
-import { createPixelTextures } from '../art/PixelArt.js'
+import { prepareDirectArt, preloadDirectArt } from '../art/DirectArt.js'
 
 export class BootScene extends Phaser.Scene {
   constructor() {
     super('BootScene')
+    this.directArtLoadError = null
+  }
+
+  preload() {
+    this.directArtLoadError = null
+    this.load.once('loaderror', file => {
+      this.directArtLoadError = `原画像を読み込めませんでした: ${file?.src ?? file?.key ?? 'unknown asset'}`
+    })
+    preloadDirectArt(this)
   }
 
   create() {
@@ -11,13 +20,15 @@ export class BootScene extends Phaser.Scene {
     const store = this.registry.get('store')
 
     try {
-      const textures = createPixelTextures(this)
-      window.__TAIL_ROOM_QA__.pixelTextures = {
-        created: textures.createdKeys.length,
-        reused: textures.reusedKeys.length,
-        nonEmpty: textures.verifiedNonEmptyKeys.length,
-        temporary: false,
-        grid: 8,
+      if (this.directArtLoadError) throw new Error(this.directArtLoadError)
+      const art = prepareDirectArt(this)
+      window.__TAIL_ROOM_QA__.directArt = {
+        source: art.manifest.source,
+        version: art.manifest.version,
+        files: art.verifiedFiles.length,
+        poses: art.registeredPoses.length,
+        derived: art.derivedKeys.length,
+        room: { ...art.manifest.room },
       }
       window.__TAIL_ROOM_QA__.renderer = this.game.renderer.type === Phaser.WEBGL ? 'webgl' : 'unexpected'
       window.__TAIL_ROOM_QA__.ready = true
@@ -27,7 +38,7 @@ export class BootScene extends Phaser.Scene {
     } catch (error) {
       console.error('Tail Room boot failed', error)
       window.__TAIL_ROOM_QA__.bootError = String(error?.message || error)
-      ui.showRuntimeError('描画用テクスチャの準備に失敗しました。Creator Previewのコンソール証跡を確認してください。')
+      ui.showRuntimeError('指定された原画像の準備に失敗しました。Creator Previewのコンソール証跡を確認してください。')
     }
   }
 }

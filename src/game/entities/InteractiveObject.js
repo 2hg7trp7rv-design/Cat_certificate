@@ -9,19 +9,26 @@ const containsFor = shape => {
 }
 
 export class InteractiveObject extends Phaser.GameObjects.Container {
-  constructor(scene, x, y, { name, texture, scale = 1, hitArea = null, onActivate = null } = {}) {
+  constructor(scene, x, y, {
+    name,
+    texture = null,
+    width: requestedWidth = null,
+    height: requestedHeight = null,
+    scale = 1,
+    hitArea = null,
+    onActivate = null,
+  } = {}) {
     super(scene, x, y)
     this.name = name || texture || 'interactive-object'
-    this.visual = scene.add.image(0, 0, texture)
-    this.visual.setScale(scale)
-    this.baseVisualY = this.visual.y
+    this.visual = texture ? scene.add.image(0, 0, texture).setScale(scale) : null
+    this.baseVisualY = this.visual?.y ?? 0
     this.hovered = false
     this.attention = false
-    this.add(this.visual)
+    if (this.visual) this.add(this.visual)
     scene.add.existing(this)
 
-    const width = this.visual.displayWidth
-    const height = this.visual.displayHeight
+    const width = Number(requestedWidth) || this.visual?.displayWidth || 1
+    const height = Number(requestedHeight) || this.visual?.displayHeight || 1
     this.setSize(width, height)
     const centeredShape = hitArea || new Phaser.Geom.Rectangle(-width / 2, -height / 2, width, height)
     const shape = alignCenteredHitArea(centeredShape, this.displayOriginX, this.displayOriginY)
@@ -34,12 +41,12 @@ export class InteractiveObject extends Phaser.GameObjects.Container {
     })
     this.on('pointerout', () => {
       this.hovered = false
-      this.visual.setY(this.baseVisualY)
+      this.visual?.setY(this.baseVisualY)
       this.applyTint()
     })
-    this.on('pointerdown', () => this.visual.setY(this.baseVisualY + 1))
+    this.on('pointerdown', () => this.visual?.setY(this.baseVisualY + 1))
     this.on('pointerup', pointer => {
-      this.visual.setY(this.baseVisualY)
+      this.visual?.setY(this.baseVisualY)
       onActivate?.(this, pointer)
     })
   }
@@ -51,7 +58,7 @@ export class InteractiveObject extends Phaser.GameObjects.Container {
   }
 
   applyTint() {
-    this.visual.setTint(this.attention ? 0xffd77a : this.hovered ? 0xffefc7 : 0xffffff)
+    this.visual?.setTint(this.attention ? 0xffd77a : this.hovered ? 0xffefc7 : 0xffffff)
   }
 }
 

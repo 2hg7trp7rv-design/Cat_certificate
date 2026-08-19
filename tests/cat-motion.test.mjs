@@ -55,14 +55,14 @@ class StubCat {
   }
 }
 
-test('default anchors stay inside the smallest 2x camera composition', () => {
+test('default anchors match the approved 852x1846 room composition', () => {
   assert.deepEqual(DEFAULT_CAT_ANCHORS, {
-    'center-idle': { x: 108, y: 382 },
-    'rug-play': { x: 108, y: 370 },
-    'bed-sleep': { x: 68, y: 378 },
-    'bowl-wait': { x: 132, y: 382 },
-    'window-watch': { x: 84, y: 350 },
-    carrier: { x: 108, y: 382 },
+    'center-idle': { x: 370, y: 1320 },
+    'rug-play': { x: 551, y: 1510 },
+    'bed-sleep': { x: 744, y: 1170 },
+    'bowl-wait': { x: 280, y: 1450 },
+    'window-watch': { x: 430, y: 1000 },
+    carrier: { x: 370, y: 1320 },
   })
 })
 

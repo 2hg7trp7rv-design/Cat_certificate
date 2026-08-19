@@ -1,10 +1,14 @@
 # Tail Room Status
 
-更新日: 2026-08-18 JST
+更新日: 2026-08-20 JST
 
 ## Current
 
-Creator Preview 0.8.0のピクセルアート、猫のmotion、温かいDOM UIはリポジトリ上で再構築済みです。SHA `26935545f03c11df63bc6ddc4a929ec9bab53ee3`に対するGitHub ActionsとVercelの証拠を取得し、現在は**実装＋CIソフトウェアWebGLゲート合格**です。物理iPhone、iOS Safari、実GPUのhardware gateは未完です。
+現行正本は**Creator Preview 0.8.1 direct-art correction**です。
+
+旧v0.8.0は、生成した完成画像を参考資料として扱い、低解像度のprocedural pixel textureへ描き直したため、ユーザーが確認したイメージ画像とかけ離れました。v0.8.1ではその前提を撤回し、添付された3 PNGをruntimeの表示正本として直接使用します。
+
+Phaser 4.2.1、WebGL、6レイヤー、Canvas内形状判定、状態エンジン、DOM UI、保存schema v6は維持します。描画資産とcamera contractだけをdirect-art仕様へ置き換えます。
 
 最優先資料: [WORK_HANDOFF.md](WORK_HANDOFF.md)
 
@@ -12,64 +16,115 @@ Creator Preview 0.8.0のピクセルアート、猫のmotion、温かいDOM UI�
 
 検証詳細: [V08_VALIDATION.md](V08_VALIDATION.md)
 
+## Direct-art source contract
+
+| Key | Runtime path | Size | Alpha | SHA-256 |
+|---|---|---:|---|---|
+| room | `public/assets/game/IMG_3036.png` | 852×1846 | 全画素不透明 | `ed17e8f3b5e6774720d3f6587cbee0531b26a9ec985c357a25922e128d0bfb1d` |
+| cat | `public/assets/game/IMG_3037.png` | 1536×1024 | 黒地は透明 | `93daf7f3f669a89a48e1709a9568adc0cef77bedbc21b2be291b9f98840ec90e` |
+| first meeting / favicon source | `public/assets/game/IMG_3038.png` | 1254×1254 | 黒地は透明 | `a1566a67ad07af7f8fc17aabab83dc2b5cf99e4cd8e12b1f481db338ab33ba54` |
+
+正本PNGは再圧縮、再生成、色補正、輪郭修正、alpha一括変更を行いません。pose frame、pivot、state mapは画像を変えないmetadataとして管理します。
+
 ## Source and structure checkpoint
 
-- Application: Creator Preview `0.8.0`
+- Application: Creator Preview `0.8.1`
 - Engine: Phaser `4.2.1`、`Phaser.WEBGL`固定
-- World: 216×472 art px、8pxグリッド、固定2倍zoom
-- Scale: Canvasは端末CSS寸法へ`Phaser.Scale.RESIZE`
+- Room source-space: 852×1846
+- Camera: centered cover、fractional zoom
+- Texture sampling: direct-artはLINEAR
+- Scale: `Phaser.Scale.NONE`。CanvasのCSS寸法はviewportへ一致させ、backing storeは端末DPRを最大2倍まで反映
+- Target sizes: 320×667、393×852、430×932
 - Layers: room、shadow、furniture、cat、foreground、lightの6層
-- Pixel textures: 合計131個
-- Cat motion: 21状態、合計113フレーム、96×96 art px共通canvas、足元pivot固定
-- Behavior: 20〜65秒のseed固定自主行動、3回連続同一選択の防止
-- Sequences: 丸寝、横寝、休息、窓観察、一人遊び
-- UI: paper cream、walnut、sage、deep teal基調の不透明なpixel-notch panel
+- Cat source: 8 exact poses、21 logical states
+- Petting metadata: 8姿勢ごとに`head`、`back`、`tail`のpivot相対領域を持ち、facingに合わせてxをmirror
+- Prop metadata: crouchのcaught toy paw anchorはpivot相対`-104,-8`、facingに合わせてxをmirror
+- Derived textures: 原本room由来の透明CanvasTexture 2件。`direct.toy-ball`は18-point polygon clip、`direct.bed-foreground`は10-point polygon clip
+- Toy floor cover: source rect `271,1457,92,92`をdestination `552,1493`へ表示
 - Input: 猫と主要家具はCanvas内形状判定、名前・食事・思い出・設定はDOM
+- Behavior: 状態優先、自主行動、睡眠・遊びsequenceの論理を維持
 - Save compatibility: `src/state.js`の`version: 6`とLocalStorage key `tail-room-state-v6`を維持
 
-131個の内訳は、部屋・家具・影・光18個と、猫21状態・113フレームです。生成時manifestは`temporary: false`を指定し、部屋・家具・影・猫はNEAREST、分離した3枚の光maskだけはLINEARとしています。ただし、これはアート制作の完了宣言ではなく、今後も同じVisual Bibleの範囲で描き込みを改善できます。
+### Responsive result
 
-## Implemented behavior
+| CSS viewport | centered cover result |
+|---:|---|
+| 320×667 | draw 320×693.33、上下各約13.17 CSS px crop |
+| 393×852 | draw 393.23×852、左右各約0.12 CSS px crop |
+| 430×932 | draw 430.15×932、左右各約0.08 CSS px crop |
 
-- 微細動作: 呼吸、瞬き、耳、視線、しっぽ
-- 姿勢と移動: 立つ、座る、香箱、伏せる、歩く、向き直る
-- 睡眠: 寝床へ歩く → 丸寝／横寝へのtransition → 寝息loop
-- 休息: 低energy時に寝床へ移り、伏せて休む
-- 一人遊び: 玩具へ歩く → 気づく → 構える → 飛びつく → 捕まえる → 戻る
-- 優先順位: 睡眠、空腹、低energyをプレイヤー遊びと自主行動より優先
-- 復帰安全: 長いbackground pauseで未再生animationを早送りせず、1 tickを上限100msへ制限
-- QA再現性: sessionと猫名を基にしたseed、明示seedを使う単体テスト
+393×852と430×932は実質無欠損です。320×667で切れるのは画像上端・下端の壁と床で、主要家具、食器、寝床、玩具は保持されます。
+
+## Cat pose checkpoint
+
+原本sheetの8姿勢は以下です。
+
+1. seated
+2. standing
+3. walking
+4. loaf
+5. side-lie
+6. curl
+7. crouch
+8. pounce
+
+logical state map:
+
+- `idle`, `blink`, `ear`, `look`, `tail` → `seated`
+- `stand` → `standing`
+- `sit` → `standing`, `standing`, `seated`, `seated`, `seated`, `seated`
+- `walk` → `standing`, `walking`
+- `turn` → `standing`, `walking`, `walking`, `standing`, `standing`
+- `loaf` → `loaf`
+- `lie` → `side-lie`
+- `sleep-side-transition` → `loaf`, `loaf`, `curl`, `curl`, `side-lie`, `side-lie`, `side-lie`
+- `sleep-side` → `side-lie`
+- `sleep-curl-transition` → `loaf`, `loaf`, `side-lie`, `side-lie`, `curl`, `curl`, `curl`, `curl`
+- `sleep-curl` → `curl`
+- `play-notice` → `loaf`, `loaf`, `crouch`, `crouch`
+- `play-crouch`, `play-catch` → `crouch`
+- `play-pounce` → `pounce`
+- `play-recover` → `pounce`, `pounce`, `crouch`, `crouch`, `standing`, `standing`
+- `welcome` → `seated`, `standing`, `standing`, `seated`, `seated`
+
+これは21種類の異なる作画が完成したという意味ではありません。現時点の固有作画は8姿勢です。non-loop transitionは終端poseを複数frame保持し、sequence末尾から先頭へ巻き戻って見える前にactionを完了させます。
 
 ## Evidence status
 
 | Evidence | Status | Note |
 |---|---|---|
-| v0.8 source／structure | 実装済み | 131 textures、21 states／113 frames、6 layers |
-| `npm run check` | 合格 | exit 0、41 JavaScript構文検査、47 tests pass |
-| Runtime／evidence SHA | 確定 | `26935545f03c11df63bc6ddc4a929ec9bab53ee3` |
-| GitHub Actions Quality Gate | 合格 | [Run 54](https://github.com/2hg7trp7rv-design/Cat_room/actions/runs/32097369705)、job `95591222211`、`completed / success` |
-| CI WebGL 3-size PNG | 合格 | Chrome 151＋SwiftShader、320×667、393×852、430×932、全サイズ横overflowなし |
-| CI interaction | 合格 | 初回撫で→既定名`こむぎ`→Room、food、bed、toy、sleep |
-| Smoke artifact | 取得済み | ID `9310409064`、`tail-room-v0.8-webgl-smoke`、2026-11-16 03:57:51 UTCまで |
-| Vercel deployment | 合格 | `dpl_H2kVdQKouknE9S76azQ27vk9iKGx`、同じSHA、`READY / production`、`aliasError: null` |
-| Canonical URL HTTP 200 | 合格 | `https://cat-certificate.vercel.app`、title `Tail Room — Creator Preview 0.8` |
+| v0.8.1 direct-art source | `PENDING` | 実装完了後にcommit SHAを固定する |
+| PNG byte parity | `PENDING` | source、public、distのSHA一致を検査する |
+| `npm run check` | `PENDING` | direct-art仕様へtest更新後に実行する |
+| GitHub Actions Quality Gate | `PENDING` | 新runのみを採用する |
+| CI WebGL 3-size PNG | `PENDING` | 320×667、393×852、430×932 |
+| Visual parity | `PENDING` | 日中背景と8 exact poseを原本と照合する |
+| Canvas interaction | `PENDING` | cat、food、bed、toy、window、pose別pet zone、caught toy anchor |
+| Save schema v6 | 維持対象 | migrationを発生させない |
+| Vercel deployment | `PENDING` | v0.8.1 SHAと一致するdeploymentを確認する |
+| Canonical URL | `PENDING` | `https://cat-certificate.vercel.app`で新revisionを確認する |
 | 物理iPhone／iOS Safari | `NOT TESTED` | 実機確認済みと書かない |
-| 実GPU 60fps目標／30fps下限 | `NOT TESTED` | CI SwiftShader値を性能判定へ使わない |
+| 実GPU 60fps目標／30fps下限 | `NOT TESTED` | CI software rendererを性能判定へ使わない |
 
-Run 54のartifactでは、131／131 texturesがnon-empty、`temporary: false`、6 layerの順序、日本語`Tail Room JP` 400／700のloadを確認した。詳細なdigest、各interaction、Vercel応答は[V08_VALIDATION.md](V08_VALIDATION.md)を参照する。
+旧Quality Gate Run 54と旧Vercel deploymentはv0.8.0 procedural-art版の履歴です。v0.8.1 direct-art correctionの合格証拠には使用しません。
 
 ## Next gate
 
-1. 最低1台の実iPhone Safariで初回導線、RoomScene、夜間の顔、入力位置、復帰を確認
-2. 実GPUで目標60fps／最低30fpsを計測し、機種、iOS版、測定方法、画面証拠を記録
-3. 実機ゲートを閉じた後、v0.9の部位別撫で反応へ進む
+1. runtimeへ配置済みの3 PNGが原本とbyte-for-byte一致することを確認し、manifestの寸法・SHA・pose rect・pivot・state mapを固定
+2. room source-space 852×1846、centered cover、LINEAR samplingへの接続を確認
+3. 6 layer、Canvas形状判定、21 logical state、保存v6の回帰確認
+4. 3対象サイズのWebGL screenshotと原本visual parityを確認
+5. 暫定`toy-floor-cover`、caught toy派生、masked bed foregroundを検証し、本格clean plateと最終専用アートを制作
+6. 猫の追加中割りを制作し、8姿勢の仮割当を段階的に解消
+7. CI、Vercel、物理iPhone、実GPUの順に検証
 
 ## Not complete
 
-- 物理iPhone、iOS Safari、実GPUによるv0.8 hardware gate
-- 最終商品アートの描き込みと毛柄展開
+- 8姿勢以外の瞬き、耳、尻尾、呼吸、歩行周期、姿勢遷移
+- 同じroom textureの隣接床subframeによる暫定`toy-floor-cover`と、crop `510,1444,88,94`を18-point polygon clipした透明CanvasTexture `direct.toy-ball`は実装済みだが、本格clean plateと猫が持つ最終専用frameは未完成
+- crop `620,1075,232,145`を10-point polygon clipした透明CanvasTexture `direct.bed-foreground`は暫定実装済みだが、3サイズ・実機での遮蔽検証と最終専用アートは未完成。WebGL非対応のGeometryMaskは使用しない
+- 朝、夕方、夜のdirect-art派生
+- 食事の接近、匂い、咀嚼、量減少
 - 撫でている最中の部位別身体反応、拒否、音、触覚
-- 食事の接近、匂い、咀嚼、食事量アニメーション
-- 複数寝床と睡眠習慣
-- drag猫じゃらし、箱、袋、発見記録
+- 物理iPhone、iOS Safari、実GPUによるhardware gate
 - 通知、TestFlight、App Store版
