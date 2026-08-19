@@ -162,6 +162,7 @@ export class RoomWorld {
       lampGlow: this.lampGlow,
       windowLight: this.windowLight,
     })
+    this.qaFrameFrozen = false
     this.motionTrace = []
     this.behavior = new CatBehaviorController(this.cat, {
       anchors: ROOM_ANCHORS,
@@ -215,10 +216,37 @@ export class RoomWorld {
         return this.scene.textures.get(key).getSourceImage()
       },
       setPose: (poseName, facing = 'right') => this.setQaPose(poseName, facing),
+      freezeFrame: () => this.freezeQaFrame(),
+      resumeFrame: () => this.resumeQaFrame(),
     })
     this.qaBridge = bridge
     window[QA_BRIDGE_KEY] = bridge
     return this
+  }
+
+  freezeQaFrame() {
+    if (!this.qaFrameFrozen) {
+      // The guarded QA bridge is called between Phaser frames. Pausing the
+      // Scene Systems directly makes the already-rendered frame atomic while
+      // WebDriver encodes its PNG; the scene remains visible but cannot advance.
+      const systems = this.scene?.sys
+      systems?.pause?.({ reason: 'qa-frame-capture' })
+      this.qaFrameFrozen = Boolean(systems?.isPaused?.())
+    }
+    return {
+      frozen: this.qaFrameFrozen,
+      snapshot: this.getQaSnapshot(),
+      inspection: this.getQaRenderInspection(),
+    }
+  }
+
+  resumeQaFrame() {
+    if (this.qaFrameFrozen) {
+      const systems = this.scene?.sys
+      systems?.resume?.({ reason: 'qa-frame-capture-complete' })
+      this.qaFrameFrozen = Boolean(systems?.isPaused?.())
+    }
+    return { frozen: this.qaFrameFrozen }
   }
 
   setQaPose(poseName, facing = 'right') {
@@ -397,6 +425,7 @@ export class RoomWorld {
       delete window[QA_BRIDGE_KEY]
     }
     this.qaBridge = null
+    this.qaFrameFrozen = false
     this.setToyCaught(false)
     this.behavior?.destroy()
     this.ambientMotion?.destroy()

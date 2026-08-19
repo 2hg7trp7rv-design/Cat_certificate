@@ -251,7 +251,14 @@ test('the visual-readback bridge and preserved framebuffer are strictly QA-query
 
   assert.match(roomWorld, /QA_BRIDGE_KEY\s*=\s*['"]__TAIL_ROOM_QA_BRIDGE__['"]/)
   assert.match(roomWorld, /document\.documentElement\.dataset\.qa\s*!==\s*['"]true['"]/, 'QA bridge must reject normal documents')
-  assert.match(roomWorld, /Object\.freeze\(\{[\s\S]*?inspect:[\s\S]*?getTextureSource:[\s\S]*?setPose:/, 'QA bridge surface must stay limited to inspection and deterministic pose selection')
+  assert.match(
+    roomWorld,
+    /Object\.freeze\(\{[\s\S]*?inspect:[\s\S]*?getTextureSource:[\s\S]*?setPose:[\s\S]*?freezeFrame:[\s\S]*?resumeFrame:/,
+    'QA bridge must expose only the guarded visual inspection, pose, and atomic frame-capture controls',
+  )
+  assert.match(roomWorld, /systems\?\.pause\?\./, 'QA frame capture must pause Scene Systems before PNG encoding')
+  assert.match(roomWorld, /systems\?\.resume\?\./, 'QA frame capture must resume Scene Systems after PNG encoding')
+  assert.match(roomWorld, /Boolean\(systems\?\.isPaused\?\.\(\)\)/, 'QA frame capture must report the actual Phaser paused state')
   assert.match(roomWorld, /delete\s+window\[QA_BRIDGE_KEY\]/, 'QA bridge must be removed during RoomWorld destruction')
   assert.doesNotMatch(entry, /__TAIL_ROOM_QA_BRIDGE__/, 'application entrypoint must not expose the QA bridge globally')
 
@@ -268,6 +275,8 @@ test('WebGL smoke evidence is isolated to a freshly cleared v0.8.1 artifact dire
 
   assert.match(smoke, /ARTIFACT_DIR\s*=\s*resolve\(ROOT,\s*['"]artifacts\/v0\.8\.1['"]\)/)
   assert.match(smoke, /await\s+rm\(ARTIFACT_DIR,\s*\{\s*recursive:\s*true,\s*force:\s*true\s*\}\)/, 'smoke must clear prior evidence before creating screenshots')
+  assert.match(smoke, /withFrozenQaFrame\([\s\S]*?play-pounce[\s\S]*?room-toy-pounce\.png/, 'pounce evidence must be captured from an atomic frozen frame')
+  assert.match(smoke, /pounceScreenshot\.sha256[\s\S]*?catchScreenshot\.sha256/, 'pounce and catch PNG evidence must be proven distinct')
   assert.match(workflow, /name:\s*tail-room-v0\.8\.1-webgl-smoke/)
   assert.match(workflow, /path:\s*artifacts\/v0\.8\.1/)
   assert.doesNotMatch(`${smoke}\n${workflow}`, /artifacts\/v0\.8(?:\/|['"])/, 'v0.8 evidence path can mix stale PNGs into v0.8.1')

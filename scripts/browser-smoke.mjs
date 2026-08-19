@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
+import { createHash } from 'node:crypto'
 import { access, mkdir, rm, writeFile } from 'node:fs/promises'
 import { constants as fsConstants } from 'node:fs'
 import { join, resolve } from 'node:path'
@@ -318,6 +319,7 @@ class WebDriverClient {
     return {
       file: filename,
       bytes: image.length,
+      sha256: createHash('sha256').update(image).digest('hex'),
       width: image.readUInt32BE(16),
       height: image.readUInt32BE(20),
       dataUrl: `data:image/png;base64,${base64}`,
@@ -1968,6 +1970,35 @@ async function pointerSequence(points, { pointerId, pauseMs = 180 } = {}) {
   }
 }
 
+async function withFrozenQaFrame({ state, pose, label }, operation) {
+  let freezeAttempted = false
+  try {
+    freezeAttempted = true
+    const frozen = await driver.execute(`
+      const bridge = window.__TAIL_ROOM_QA_BRIDGE__;
+      if (!bridge || typeof bridge.freezeFrame !== 'function') {
+        throw new Error('Guarded QA frame-freeze bridge is unavailable');
+      }
+      return bridge.freezeFrame();
+    `)
+    assert.equal(frozen?.frozen, true, `${label}: QA frame did not freeze`)
+    assert.equal(frozen?.snapshot?.behavior?.action, 'player-play', `${label}: player-play action changed before capture`)
+    assert.equal(frozen?.snapshot?.behavior?.state, state, `${label}: behavior advanced before its frame was frozen`)
+    assert.equal(frozen?.snapshot?.art?.catPose, pose, `${label}: cat pose advanced before its frame was frozen`)
+    assert.equal(frozen?.inspection?.cat?.pose, pose, `${label}: rendered cat inspection disagrees with the frozen pose`)
+    return await operation(frozen)
+  } finally {
+    if (freezeAttempted) {
+      const resumed = await driver.execute(`
+        const bridge = window.__TAIL_ROOM_QA_BRIDGE__;
+        if (!bridge || typeof bridge.resumeFrame !== 'function') return null;
+        return bridge.resumeFrame();
+      `)
+      assert.equal(resumed?.frozen, false, `${label}: QA frame remained frozen after capture`)
+    }
+  }
+}
+
 async function runInteractionCase() {
   const result = { size: '393x852', status: 'running', steps: [] }
   report.interaction = result
@@ -2088,23 +2119,33 @@ async function runInteractionCase() {
         playStarted = true
         if (behavior.state) observedMotion.add(behavior.state)
         if (behavior.state === 'play-pounce' && !pounceScreenshot) {
-          pounceScreenshot = await driver.saveElementScreenshot('#app', 'room-toy-pounce.png')
+          pounceScreenshot = await withFrozenQaFrame({
+            state: 'play-pounce',
+            pose: 'pounce',
+            label: '393x852 toy pounce',
+          }, () => driver.saveElementScreenshot('#app', 'room-toy-pounce.png'))
         }
         if (behavior.state === 'play-catch' && !catchScreenshot) {
-          assert.equal(playDiagnostic.toyVisible, false, 'Room toy must hide while the cat carries its caught toy')
-          assert.equal(playDiagnostic.toyFloorCoverVisible, true, 'The approved-room floor cover must hide the baked ball during catch')
-          assert.equal(playDiagnostic.caughtToyVisible, true, 'The cat must visibly carry the exact ball cutout during catch')
-          catchParity = await runVisualProbe({
-            kind: 'catch',
-            roomUrl: DIRECT_ART_FILES.room.url,
-            catUrl: DIRECT_ART_FILES.cat.url,
-            catPose: DIRECT_CAT_POSES.crouch,
-            floorCover: DIRECT_ART_MANIFEST.room.frames['toy-floor-cover'],
-            caughtToy: DIRECT_DERIVED_TEXTURES.caughtToy,
+          catchScreenshot = await withFrozenQaFrame({
+            state: 'play-catch',
+            pose: 'crouch',
+            label: '393x852 toy catch',
+          }, async frozen => {
+            assert.equal(frozen.snapshot.visibility?.toy, false, 'Room toy must hide while the cat carries its caught toy')
+            assert.equal(frozen.snapshot.visibility?.toyFloorCover, true, 'The approved-room floor cover must hide the baked ball during catch')
+            assert.equal(frozen.snapshot.visibility?.caughtToy, true, 'The cat must visibly carry the exact ball cutout during catch')
+            catchParity = await runVisualProbe({
+              kind: 'catch',
+              roomUrl: DIRECT_ART_FILES.room.url,
+              catUrl: DIRECT_ART_FILES.cat.url,
+              catPose: DIRECT_CAT_POSES.crouch,
+              floorCover: DIRECT_ART_MANIFEST.room.frames['toy-floor-cover'],
+              caughtToy: DIRECT_DERIVED_TEXTURES.caughtToy,
+            })
+            result.catchVisualParity = catchParity
+            assertCatchVisualParity(catchParity, '393x852 catch')
+            return driver.saveElementScreenshot('#app', 'room-toy-catch.png')
           })
-          result.catchVisualParity = catchParity
-          assertCatchVisualParity(catchParity, '393x852 catch')
-          catchScreenshot = await driver.saveElementScreenshot('#app', 'room-toy-catch.png')
         }
       } else if (playStarted) {
         break
@@ -2138,6 +2179,11 @@ async function runInteractionCase() {
     )
     assert.ok(pounceScreenshot, 'Toy sequence never produced screenshot evidence for play-pounce')
     assert.ok(catchScreenshot, 'Toy sequence never produced screenshot evidence for play-catch')
+    assert.notEqual(
+      pounceScreenshot.sha256,
+      catchScreenshot.sha256,
+      'Toy pounce and catch evidence are byte-identical; capture advanced past the pounce frame',
+    )
     assert.equal(
       await driver.execute('return window.__TAIL_ROOM_QA__?.room?.visibility?.toy;'),
       true,
