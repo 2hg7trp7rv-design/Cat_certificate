@@ -2,11 +2,11 @@
 
 更新日: 2026-08-20 JST
 状態: **このプロジェクトの現行方針を示す最優先資料**
-現行正本: **Creator Preview 0.8.1 direct-art correction**
+現行正本: **Creator Preview 0.8.2 source-locked motion scaffold**
 
 次にこのリポジトリを扱うWorkは、コード変更前に必ず本書を最後まで確認すること。READMEや現在公開されている画面より、本書の方針を優先する。
 
-v0.8.1の検証値と未検証境界は[`V08_VALIDATION.md`](V08_VALIDATION.md)、画面の正本は[`VISUAL_BIBLE.md`](VISUAL_BIBLE.md)を参照する。旧v0.8.0のprocedural-art仕様と検証記録は履歴であり、現行仕様・現行合格証拠ではない。
+v0.8.2の検証値と未完成境界は[`V082_MOTION_VALIDATION.md`](V082_MOTION_VALIDATION.md)、v0.8.1のdirect-art履歴は[`V08_VALIDATION.md`](V08_VALIDATION.md)、画面の正本は[`VISUAL_BIBLE.md`](VISUAL_BIBLE.md)を参照する。旧v0.8.0のprocedural-art仕様と検証記録は履歴であり、現行仕様・現行合格証拠ではない。
 
 ---
 
@@ -45,19 +45,19 @@ v0.8.1の検証値と未検証境界は[`V08_VALIDATION.md`](V08_VALIDATION.md)�
 - 使用branch: `main`
 - ユーザーの明示許可なしに別repositoryや別の公開branchへ移さない
 - Work開始時に最新mainとCIを取得する
-- v0.8.1 validated source commit SHA: `ad4b58d92c23f57950c823a06125a193fbc3cb3c`
-- v0.8.1 Quality Gate: Run 61、ID `32287376527`、job `96180005338`、`completed / success`
+- v0.8.2 validated runtime source commit SHA: `fc96a038950ff26303ca13653924130719f18fdc`
+- v0.8.2 Quality Gate: Run 64、ID `32346017409`、job `96354829054`、`completed / success`
 
 ### Vercel
 
 - Project name: `cats-room`
 - Project ID: `prj_x77pFkTy2D8nBYq0QKDZZtV59Bz3`
 - 制作者確認URL: `https://cat-certificate.vercel.app`
-- v0.8.1 deployment ID: `dpl_2Qjt6Eo12io6LkAMqD9uUPhxn8fH`
-- v0.8.1 deployment state: `READY`、`aliasError: null`
-- v0.8.1 served GitHub SHA: `ad4b58d92c23f57950c823a06125a193fbc3cb3c`
+- v0.8.2 deployment ID: `dpl_FKVNJvaNPKnzVEYRcKd8UoutXbKF`
+- v0.8.2 deployment state: `READY`、`aliasError: null`
+- v0.8.2 served GitHub SHA: `fc96a038950ff26303ca13653924130719f18fdc`
 
-URLが開けても、v0.8.1のcommit SHA、asset SHA、build metadataが一致するまでproduction合格とは扱わない。
+URLが開けても、v0.8.2のcommit SHA、3正本PNG、motion atlas、build metadataが一致するまでproduction合格とは扱わない。
 
 ### 旧v0.8.0証拠の扱い
 
@@ -85,6 +85,23 @@ v0.8.1では次の判断へ修正した。
 - 猫8姿勢をsheetから直接使用する
 - 動的に必要な箇所だけ、正本由来の最小layerへ分ける
 - 状態、保存、入力、行動controllerは維持する
+
+### v0.8.2 source-locked motion
+
+v0.8.2は、v0.8.1の3正本PNGと8 exact poseを変更せず、次の最小motionを追加した。
+
+- `public/assets/game/motion/v0.8.2/cat-micro.png`、1216×896 RGBA、SHA-256 `37a224e222d093a70cd4c776674223a31f434bd7462ac68d249942c949866ef4`
+- `IMG_3037.png`のseated rect `75,116,267,342`をsourceとする
+- `blink-half`、`blink-closed`は目の範囲だけを変更
+- `tail-body`と`tail-part`はsource pixelのbinary partition。neutral合成はsourceとの差0
+- tailは2 componentを`0,-2,-4,4,2,0`度で動かす6 transform phase
+- walk、play notice／crouch／pounce／recoverへscaleなしの小さなroot motionを追加
+- 撫で反応の`reactionRoot`と生活動作の`motionRoot`を分離
+- 補助atlas frameはsource実寸267×342を無劣化crop登録し、透明guardをrender boundsへ含めない
+
+AI生成した追加frame候補2件は、checkerboardが実alphaではなく、猫の顔・柄・寸法が正本からずれたため不採用。repository、public asset、runtimeへ入れていない。
+
+これは最終animation completionではない。瞬きと尻尾のmicro motionは実装済みだが、歩行、睡眠、遊び、食事、撫で反応の固有中割りは引き続き制作対象。
 
 ---
 
@@ -193,7 +210,9 @@ base scaleは0.75。仮合成で、座る、歩く、寝床の丸寝、玩具へ
 
 ### 21 logical state map
 
-- `idle`, `blink`, `ear`, `look`, `tail` → `seated`
+- `idle`, `ear`, `look` → `seated`
+- `blink` → `blink-half`, `blink-closed`, `blink-closed`, `blink-half`
+- `tail` → `tail-body + tail-part`、角度`0,-2,-4,4,2,0`
 - `stand` → `standing`
 - `sit` → `standing`, `standing`, `seated`, `seated`, `seated`, `seated`
 - `loaf` → `loaf`
@@ -211,7 +230,7 @@ base scaleは0.75。仮合成で、座る、歩く、寝床の丸寝、玩具へ
 - `play-recover` → `pounce`, `pounce`, `crouch`, `crouch`, `standing`, `standing`
 - `welcome` → `seated`, `standing`, `standing`, `seated`, `seated`
 
-logical timingとbehavior sequenceは維持するが、固有作画は8姿勢しかない。non-loop transitionは終端poseを複数frame保持し、action完了前にsequence先頭へ巻き戻って見えない長さにしている。同じ姿勢を繰り返しても、瞬き、耳、尻尾、呼吸、歩行周期、transitionが完成したとは扱わない。
+logical timingとbehavior sequenceは維持する。固有全身作画は8姿勢で、追加済みなのは瞬き2 frameと尻尾2 component。non-loop transitionは終端poseを複数frame保持し、action完了前にsequence先頭へ巻き戻って見えない長さにしている。同じ姿勢を繰り返すことやroot transformだけで、耳、視線、呼吸、歩行周期、transitionが完成したとは扱わない。
 
 ### Pose別の撫で領域とprop anchor
 
@@ -233,10 +252,9 @@ logical timingとbehavior sequenceは維持するが、固有作画は8姿勢し
 ### 追加制作が必要
 
 - 呼吸
-- 瞬き
 - 耳と視線
-- 尻尾
-- 連続した歩行
+- 6 frame以上の連続した歩行
+- 尻尾の最終専用中割り。現状はsource partitionの小角度transform
 - 立つ、座る、伏せるtransition
 - 丸寝、横寝へのtransitionと寝息
 - notice、crouch、pounce、catch、recoverの中割り
@@ -316,6 +334,9 @@ curl poseはscale 0.75、anchor 744,1170で寝床へ収まる。原本roomのcro
 
 - `src/game/art/DirectArtManifest.js`
 - `src/game/art/DirectArt.js`
+- `src/game/art/CatMotionManifest.js`
+- `src/game/art/CatMotion.js`
+- `src/game/motion/CatKinematics.js`
 - `src/game/world/WorldCamera.js`
 - `src/game/world/RoomWorld.js`
 - `src/game/entities/Cat.js`
@@ -328,11 +349,14 @@ curl poseはscale 0.75、anchor 744,1170で寝床へ収まる。原本roomのcro
 - `public/assets/game/IMG_3036.png`
 - `public/assets/game/IMG_3037.png`
 - `public/assets/game/IMG_3038.png`
+- `public/assets/game/motion/v0.8.2/cat-micro.png`
 - `scripts/**`
 - `tests/**`
 - `vendor/phaser-4.2.1/**`
 
 `DirectArtManifest.js`はURL、寸法、SHA、pose rectangle、pivot、logical state map、pose別pet zone、prop anchor、room subframe、2件の`DIRECT_DERIVED_TEXTURES`を一元管理する。`DirectArt.js`はpreload、寸法検査、LINEAR filter、frame登録に加え、18-point／10-point polygon clipから透明CanvasTextureを生成する。WebGL非対応のGeometryMaskは使用しない。
+
+`CatMotionManifest.js`は補助atlasのURL、寸法、SHA、source provenance、runtime crop、pivot、blink sequence、tail componentと角度を管理する。`CatMotion.js`は別textureとしてpreload・寸法検査・frame登録し、`CatKinematics.js`はscaleを含まないbounded root motionだけを返す。
 
 旧procedural art generatorは現行source of truthではない。旧値を前提にしたtest、docs、debug表示を残さない。
 
@@ -344,27 +368,31 @@ curl poseはscale 0.75、anchor 744,1170で寝床へ収まる。原本roomのcro
 
 | Gate | Status |
 |---|---|
-| v0.8.1 source commit | `PASSED` — `ad4b58d92c23f57950c823a06125a193fbc3cb3c` |
+| v0.8.2 runtime source commit | `PASSED` — `fc96a038950ff26303ca13653924130719f18fdc` |
 | 3 PNG source SHA | `PASSED` — 3正本SHAと一致 |
 | 3 PNG dist SHA | `PASSED` — sourceとbyte-for-byte一致 |
-| Local tests | `PASSED` — JavaScript 45件、tests 69／69 |
-| GitHub Actions | `PASSED` — Run 61、ID `32287376527`、job `96180005338`、全step success |
+| Motion atlas SHA | `PASSED` — source、dist、productionで`37a224e2…866ef4` |
+| Local tests | `PASSED` — JavaScript 49件、tests 75／75 |
+| GitHub Actions | `PASSED` — Run 64、ID `32346017409`、job `96354829054`、全step success |
 | 320×667 screenshot | `PASSED` — CSS viewport PNGを検証 |
 | 393×852 screenshot | `PASSED` — CSS viewport PNGを検証 |
 | 430×932 screenshot | `PASSED` — CSS viewport PNGを検証 |
 | DPR 1／2／3 | `PASSED` — 3サイズはDPR 1、393×852はDPR 2／3でもbacking storeとCanvas inputを検証 |
 | Direct-art visual parity | `PASSED` — 日中背景、8 exact pose、left flip |
+| Source-locked motion | `PASSED` — 瞬き2段階、尻尾両方向、pounce頂点。`report.motionArt.status=passed` |
 | Canvas hit位置 | `PASSED` — cat slow drag、food、bed、toyは実入力。windowはCanvas hit boundsの登録・可視範囲を検査 |
 | Toy floor cover | `PASSED` — pounce／catchを別frameとして検証 |
 | Sleep placement | `PASSED` — curlとbed foregroundを検証 |
-| Vercel deployment | `PASSED` — `dpl_2Qjt6Eo12io6LkAMqD9uUPhxn8fH`、`READY` |
+| Vercel deployment | `PASSED` — `dpl_FKVNJvaNPKnzVEYRcKd8UoutXbKF`、`READY`、`aliasError: null` |
 | Canonical URL served SHA | `PASSED` — HTTP 200、source SHA一致 |
 | 物理iPhone / iOS Safari | `NOT TESTED` |
 | 実GPU fps | `NOT TESTED` |
 
-smoke artifactはID `9378229129`、名称`tail-room-v0.8.1-webgl-smoke`、digest `sha256:f480afa437bad9879106c9a82c87c7aee1466f2f50ebc732c071b9717109b15b`、size 18,014,821 bytes、expiry `2026-11-17T18:26:48Z`、`report.status=passed`。dist artifactはID `9378143969`、digest `sha256:92c13645d800062dea2ccaad76ff786650c93f18bb55f1b025798c8902f91cb7`、expiry `2026-08-26T18:27:00Z`。
+smoke artifactはID `9398120243`、名称`tail-room-v0.8.2-webgl-smoke`、digest `sha256:bcaf6655354a68fbe94f7ff10b4e2464db3d8bdee2b9b583c1ff0bb91869f05f`、size 20,274,192 bytes、expiry `2026-11-18T07:52:14Z`、`report.status=passed`。dist artifactはID `9398047205`、digest `sha256:2d84e3605e6ef3c08eb769c3cda4b07e1ec4f3c8478e1d2a188fe89003dec6ff`、expiry `2026-08-27T07:52:24Z`。
 
-CIはChrome `151.0.7922.137`、ChromeDriver `151.0.7922.138`、SwiftShaderによるsoftware WebGL診断である。物理iPhone、iOS Safari、hardware GPUの合格証拠には使用しない。
+CIはChrome `151.0.7922.108`、ChromeDriver `151.0.7922.77`、SwiftShaderによるsoftware WebGL診断である。物理iPhone、iOS Safari、hardware GPUの合格証拠には使用しない。
+
+初回implementation commit `dc8578c22dc54483863449f2a2fa33e6ead44009`のRun 63は、透明atlas guardと非表示spriteを可視boundsへ含めたQA誤判定でfailure。source実寸frameとvisible-only boundsへ修正した`fc96a038950ff26303ca13653924130719f18fdc`のRun 64で全caseが合格した。
 
 「sourceへ実装した」と「CIで合格した」と「productionへ配信した」と「物理iPhoneで合格した」を混同しない。
 
@@ -373,34 +401,37 @@ CIはChrome `151.0.7922.137`、ChromeDriver `151.0.7922.138`、SwiftShaderによ
 ## 11. 次のWorkが行う順序
 
 1. latest mainと作業treeを確認し、validated source SHAと本書の証拠を照合
-2. 物理iPhone／iOS SafariでFirstMeetingScene、RoomScene、Canvas hit、background復帰を確認
-3. 実GPUで目標60fps／最低30fpsを測定し、端末・iOS・Safari versionとともに記録
-4. 玩具なしclean plate、独立toy、猫が持つ最終専用frame、最終寝床アートを制作
-5. 8正本poseと同一猫の追加中割りを制作し、21 logical stateへの仮割当を段階的に解消
-6. 朝、夕方、夜のsource-matched art、食事animation、撫で反応を制作
-7. 変更ごとにlocal check、Quality Gate、Vercel、実機の順で再検証し、sourceと証拠のSHAを分けて記録
+2. 8正本poseと同じ顔、柄、体格、pixel densityの歩行中割りを6 frame以上制作
+3. 歩行frameを個別captureし、neutral、接地、pivot、左右mirror、seam、source同一性を検査
+4. 睡眠、遊び、食事、撫で反応の順に固有中割りを増やす
+5. 物理iPhone／iOS SafariでFirstMeetingScene、RoomScene、Canvas hit、background復帰を確認
+6. 実GPUで目標60fps／最低30fpsを測定し、端末・iOS・Safari versionとともに記録
+7. 玩具なしclean plate、独立toy、猫が持つ最終専用frame、最終寝床アートを制作
+8. 朝、夕方、夜のsource-matched artを制作
+9. 変更ごとにlocal check、Quality Gate、Vercel、実機の順で再検証し、sourceと証拠のSHAを分けて記録
 
 旧Run 54や旧deploymentをv0.8.1の証拠欄へ入れない。
 
 ---
 
-## 12. v0.8.1 software acceptance
+## 12. v0.8.2 software acceptance
 
 同一commit SHAで次を満たした時だけsoftware gate合格。
 
 1. 3 PNGが正本SHAと一致
-2. distもbyte-for-byte一致
-3. `npm run check` exit 0
-4. 新Quality Gate success
-5. 3サイズWebGL smoke success
-6. room、shadow、furniture、cat、foreground、lightの順序一致
-7. first meeting、Canvas hit、toy、sleep、保存v6回帰が合格
-8. day visual parityが合格
-9. 同一SHAのVercel deploymentがREADY
-10. canonical URLが同一revisionを配信
-11. reportとPNG artifactを保存
+2. motion atlasが固定SHAと一致し、3正本を置換しない
+3. distもbyte-for-byte一致
+4. `npm run check` exit 0
+5. 新Quality Gate success
+6. 3サイズWebGL smoke success
+7. room、shadow、furniture、cat、foreground、lightの順序一致
+8. first meeting、Canvas hit、toy、sleep、保存v6回帰が合格
+9. day、8 pose、blink、tail、pounce visual evidenceが合格
+10. 同一SHAのVercel deploymentがREADY
+11. canonical URLが同一revisionとassetを配信
+12. reportとPNG artifactを保存
 
-validated source commit `ad4b58d92c23f57950c823a06125a193fbc3cb3c`は上記11項目を満たし、v0.8.1 software gateに`PASSED`。ただし、物理iPhone、iOS Safari、実GPUは別gateであり`NOT TESTED`。
+validated runtime source commit `fc96a038950ff26303ca13653924130719f18fdc`は上記12項目を満たし、v0.8.2 source-locked motion scaffoldのsoftware gateに`PASSED`。ただし、最終猫animation、物理iPhone、iOS Safari、実GPUは別gateであり、前者は`OPEN`、後三者は`NOT TESTED`。
 
 ---
 
@@ -414,11 +445,20 @@ validated source commit `ad4b58d92c23f57950c823a06125a193fbc3cb3c`は上記11項
 - 6 layer、Canvas hit、状態・保存v6維持
 - FirstMeetingとfaviconへbrand正本を使用
 
+### v0.8.2 Source-locked motion scaffold
+
+- 2段階瞬き
+- source pixel partitionによる尻尾micro motion
+- walkとplayのbounded root motion
+- reaction rootとmotion rootの分離
+- individual motion seek、screenshot、SHA evidence
+- 最終歩行、睡眠、遊び、食事、撫で中割りは未完成
+
 ### v0.8.x Motion completion
 
 - 8 poseと同一猫の追加中割り
 - 歩行周期
-- 呼吸、瞬き、耳、視線、尾
+- 呼吸、耳、視線、最終尾animation
 - 睡眠transitionと寝息
 - 玩具clean plate、持つ最終専用frame、検証済みの最終寝床アート
 - 朝、夕方、夜のsource-matched art
@@ -557,8 +597,8 @@ validated source commit `ad4b58d92c23f57950c823a06125a193fbc3cb3c`は上記11項
 
 ## 17. 最重要判断
 
-次のWorkは、旧procedural-art版へ戻ってはいけない。v0.8.1で最初に閉じるべき課題は、新機能ではなく**承認された3画像をそのまま表示するvisual parity**である。
+次のWorkは、旧procedural-art版へ戻ってはいけない。承認された3画像をそのまま表示するvisual parityはv0.8.1で閉じ、v0.8.2では正本を変えないmicro motionまで閉じた。
 
-その後に、玩具clean plate、猫が持つ最終専用frame、最終寝床アート、追加中割りを制作する。8姿勢しかない状態で「動き完成」とは判断しない。
+次は、同じ猫として成立する歩行中割りを最優先で制作する。その後に睡眠、遊び、食事、撫で反応、玩具clean plate、猫が持つ最終専用frame、最終寝床アートへ進む。8全身姿勢とtransform-only motionだけで「動き完成」とは判断しない。
 
 Phaser 4.2.1 WebGL、852×1846 source-space、fractional centered cover、LINEAR sampling、6 layers、Canvas形状判定、21 logical states、保存v6互換を土台として進める。
