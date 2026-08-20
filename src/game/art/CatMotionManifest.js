@@ -9,15 +9,23 @@ export const CAT_MOTION_ART_FILE = Object.freeze({
 })
 
 export const CAT_MOTION_CELL = Object.freeze({ width: 608, height: 448 })
-export const CAT_MOTION_FLOOR_PIVOT = Object.freeze({ x: 256, y: 400 })
+export const CAT_MOTION_CELL_CONTENT_OFFSET = Object.freeze({ x: 161, y: 67 })
+export const CAT_MOTION_CELL_FLOOR_PIVOT = Object.freeze({ x: 256, y: 400 })
+export const CAT_MOTION_FLOOR_PIVOT = Object.freeze({ x: 95, y: 333 })
 
 const frame = (name, x, y) => Object.freeze({
   frame: name,
-  rect: Object.freeze({
+  cellRect: Object.freeze({
     x,
     y,
     width: CAT_MOTION_CELL.width,
     height: CAT_MOTION_CELL.height,
+  }),
+  rect: Object.freeze({
+    x: x + CAT_MOTION_CELL_CONTENT_OFFSET.x,
+    y: y + CAT_MOTION_CELL_CONTENT_OFFSET.y,
+    width: 267,
+    height: 342,
   }),
   pivot: CAT_MOTION_FLOOR_PIVOT,
   canonicalPose: 'seated',
@@ -80,6 +88,8 @@ export const CAT_MOTION_MANIFEST = Object.freeze({
   source: 'approved-source-locked-supplement',
   file: CAT_MOTION_ART_FILE,
   cell: CAT_MOTION_CELL,
+  cellContentOffset: CAT_MOTION_CELL_CONTENT_OFFSET,
+  cellFloorPivot: CAT_MOTION_CELL_FLOOR_PIVOT,
   floorPivot: CAT_MOTION_FLOOR_PIVOT,
   frames: CAT_MOTION_FRAMES,
   blink: CAT_BLINK_SEQUENCE,

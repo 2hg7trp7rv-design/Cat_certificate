@@ -9,6 +9,8 @@ import {
   CAT_BLINK_SEQUENCE,
   CAT_MOTION_ART_FILE,
   CAT_MOTION_CELL,
+  CAT_MOTION_CELL_CONTENT_OFFSET,
+  CAT_MOTION_CELL_FLOOR_PIVOT,
   CAT_MOTION_FRAMES,
   CAT_MOTION_PROVENANCE,
   CAT_TAIL_MOTION,
@@ -112,7 +114,7 @@ test('the source-locked motion atlas is pinned separately from the three approve
   assert.deepEqual(files.sort(), ['cat-micro.png'])
 })
 
-test('every supplemental frame is a bounded fixed cell with a shared floor pivot and transparent guard', async () => {
+test('every supplemental frame crops the exact source footprint inside a guarded fixed cell', async () => {
   const atlas = decodeRgbaPng(await readFile(motionPath))
   assert.deepEqual(
     { width: atlas.width, height: atlas.height },
@@ -121,15 +123,45 @@ test('every supplemental frame is a bounded fixed cell with a shared floor pivot
 
   for (const [name, frame] of Object.entries(CAT_MOTION_FRAMES)) {
     const { x, y, width, height } = frame.rect
-    assert.deepEqual({ width, height }, CAT_MOTION_CELL, `${name}: cell size changed`)
+    assert.deepEqual(
+      { width, height },
+      { width: CAT_MOTION_PROVENANCE.sourceRect.width, height: CAT_MOTION_PROVENANCE.sourceRect.height },
+      `${name}: source-sized runtime frame changed`,
+    )
     assert.ok(x >= 0 && y >= 0 && x + width <= atlas.width && y + height <= atlas.height)
-    assert.deepEqual(frame.pivot, { x: 256, y: 400 })
+    assert.deepEqual(frame.pivot, CAT_MOTION_PROVENANCE.sourcePivot)
     assert.equal(frame.canonicalPose, 'seated')
+    assert.deepEqual(
+      { x: x - frame.cellRect.x, y: y - frame.cellRect.y },
+      CAT_MOTION_CELL_CONTENT_OFFSET,
+      `${name}: content offset moved inside its cell`,
+    )
+    assert.deepEqual(
+      {
+        x: CAT_MOTION_CELL_CONTENT_OFFSET.x + frame.pivot.x,
+        y: CAT_MOTION_CELL_CONTENT_OFFSET.y + frame.pivot.y,
+      },
+      CAT_MOTION_CELL_FLOOR_PIVOT,
+      `${name}: source pivot no longer reaches the shared cell pivot`,
+    )
 
-    for (let localY = 0; localY < height; localY += 1) {
-      for (let localX = 0; localX < width; localX += 1) {
-        if (localX >= 16 && localY >= 16 && localX < width - 16 && localY < height - 16) continue
-        assert.ok(atlas.pixel(x + localX, y + localY)[3] < 16, `${name}: visible pixel entered 16px guard`)
+    assert.deepEqual(
+      { width: frame.cellRect.width, height: frame.cellRect.height },
+      CAT_MOTION_CELL,
+      `${name}: fixed atlas cell changed`,
+    )
+    for (let localY = 0; localY < frame.cellRect.height; localY += 1) {
+      for (let localX = 0; localX < frame.cellRect.width; localX += 1) {
+        const insideContent = localX >= CAT_MOTION_CELL_CONTENT_OFFSET.x
+          && localY >= CAT_MOTION_CELL_CONTENT_OFFSET.y
+          && localX < CAT_MOTION_CELL_CONTENT_OFFSET.x + width
+          && localY < CAT_MOTION_CELL_CONTENT_OFFSET.y + height
+        if (insideContent) continue
+        assert.equal(
+          atlas.pixel(frame.cellRect.x + localX, frame.cellRect.y + localY)[3],
+          0,
+          `${name}: visible pixel escaped the source-sized runtime frame`,
+        )
       }
     }
   }
@@ -142,15 +174,13 @@ test('blink frames change only the recorded eye region of the approved seated so
   ])
   const sourceRect = CAT_MOTION_PROVENANCE.sourceRect
   const changed = CAT_MOTION_PROVENANCE.blink.changedRegion
-  const framePlacement = { x: 161, y: 67 }
-
   for (const name of ['blink-half', 'blink-closed']) {
     const frame = CAT_MOTION_FRAMES[name]
     let changedPixels = 0
     for (let y = 0; y < sourceRect.height; y += 1) {
       for (let x = 0; x < sourceRect.width; x += 1) {
         const sourcePixel = source.pixel(sourceRect.x + x, sourceRect.y + y)
-        const motionPixel = atlas.pixel(frame.rect.x + framePlacement.x + x, frame.rect.y + framePlacement.y + y)
+        const motionPixel = atlas.pixel(frame.rect.x + x, frame.rect.y + y)
         const equal = sourcePixel.equals(motionPixel)
         const inside = x >= changed.x && y >= changed.y
           && x < changed.x + changed.width && y < changed.y + changed.height
@@ -170,15 +200,14 @@ test('neutral tail body plus part is an exact source-pixel partition', async () 
     readFile(motionPath).then(decodeRgbaPng),
   ])
   const sourceRect = CAT_MOTION_PROVENANCE.sourceRect
-  const placement = { x: 161, y: 67 }
   const body = CAT_MOTION_FRAMES[CAT_TAIL_MOTION.bodyFrame]
   const part = CAT_MOTION_FRAMES[CAT_TAIL_MOTION.partFrame]
 
   for (let y = 0; y < sourceRect.height; y += 1) {
     for (let x = 0; x < sourceRect.width; x += 1) {
       const sourcePixel = source.pixel(sourceRect.x + x, sourceRect.y + y)
-      const bodyPixel = atlas.pixel(body.rect.x + placement.x + x, body.rect.y + placement.y + y)
-      const partPixel = atlas.pixel(part.rect.x + placement.x + x, part.rect.y + placement.y + y)
+      const bodyPixel = atlas.pixel(body.rect.x + x, body.rect.y + y)
+      const partPixel = atlas.pixel(part.rect.x + x, part.rect.y + y)
       const visibleComponents = [bodyPixel, partPixel].filter(pixel => pixel[3] > 0)
       if (sourcePixel[3] === 0) {
         assert.equal(visibleComponents.length, 0, `tail partition created alpha at ${x},${y}`)

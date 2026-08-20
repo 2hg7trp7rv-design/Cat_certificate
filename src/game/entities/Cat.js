@@ -184,6 +184,27 @@ export class Cat extends Phaser.GameObjects.Container {
     }
   }
 
+  /**
+   * Phaser Container bounds include hidden children and the transparent guard
+   * around atlas cells. Report only the parts that are actually rendered so
+   * responsive placement and QA use the visible cat footprint.
+   */
+  getInteractionBounds(output = new Phaser.Geom.Rectangle()) {
+    const parts = this.visualMode === 'tail'
+      ? [this.tailBodySprite, this.tailPartSprite]
+      : [this.pixelSprite]
+    const bounds = parts
+      .filter(part => part?.visible)
+      .map(part => part.getBounds())
+
+    if (bounds.length === 0) return output.setTo(this.x, this.y, 0, 0)
+    const left = Math.min(...bounds.map(rect => rect.left))
+    const top = Math.min(...bounds.map(rect => rect.top))
+    const right = Math.max(...bounds.map(rect => rect.right))
+    const bottom = Math.max(...bounds.map(rect => rect.bottom))
+    return output.setTo(left, top, right - left, bottom - top)
+  }
+
   setDirectPose(poseName = 'seated', facing = this.facing) {
     if (!DIRECT_CAT_POSES[poseName]) throw new RangeError(`Unknown direct cat pose: ${poseName}`)
     this.facing = facing === 'left' ? 'left' : 'right'
