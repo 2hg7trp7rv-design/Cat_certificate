@@ -70,7 +70,7 @@ export class DebugScene extends Phaser.Scene {
     const layerNames = room?.world?.layerNames || window.__TAIL_ROOM_QA__.layers || []
     const roomZoom = Number(room?.cameras?.main?.zoom || 0)
     this.label.setText([
-      `Tail Room v0.8.1 / Phaser 4.2.1 / WebGL direct art`,
+      `Tail Room v0.8.2 / Phaser 4.2.1 / WebGL source-locked motion`,
       `Canvas ${internalSize} → ${displaySize}  FPS ${fps.toFixed(1)}  min ${minimum.toFixed(1)}  avg ${average.toFixed(1)}`,
       `Layers ${layerNames.join(' · ')}`,
       `Context ${window.__TAIL_ROOM_QA__.contextLost ? 'LOST' : 'active'}  Source 852×1846 / zoom ${roomZoom.toFixed(4)}`,

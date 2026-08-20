@@ -1,4 +1,5 @@
 import Phaser from '../phaser.js'
+import { CAT_MOTION_ART_FILE } from '../art/CatMotionManifest.js'
 import {
   DIRECT_ART_FILES,
   DIRECT_CAT_PROP_ANCHORS,
@@ -8,7 +9,7 @@ import {
 import { CatBehaviorController, DEFAULT_CAT_ANCHORS } from '../behavior/CatBehaviorController.js'
 import Bed from '../entities/Bed.js'
 import Bowl from '../entities/Bowl.js'
-import Cat from '../entities/Cat.js'
+import Cat, { CAT_ANIMATION_SPECS } from '../entities/Cat.js'
 import InteractiveObject from '../entities/InteractiveObject.js'
 import Toy from '../entities/Toy.js'
 import AmbientRoomMotion from './AmbientRoomMotion.js'
@@ -18,17 +19,6 @@ export const ROOM_ANCHORS = DEFAULT_CAT_ANCHORS
 
 const CRITICAL_BEHAVIORS = new Set(['first-meeting', 'sleep', 'wait-for-meal', 'rest'])
 const QA_BRIDGE_KEY = '__TAIL_ROOM_QA_BRIDGE__'
-const QA_POSE_COMMANDS = Object.freeze({
-  seated: Object.freeze({ state: 'idle', elapsedMs: 0, loop: true }),
-  standing: Object.freeze({ state: 'walk', elapsedMs: 0, loop: true }),
-  walking: Object.freeze({ state: 'walk', elapsedMs: 115, loop: true }),
-  loaf: Object.freeze({ state: 'loaf', elapsedMs: 0, loop: true }),
-  'side-lie': Object.freeze({ state: 'sleep-side', elapsedMs: 0, loop: true }),
-  curl: Object.freeze({ state: 'sleep-curl', elapsedMs: 0, loop: true }),
-  crouch: Object.freeze({ state: 'play-crouch', elapsedMs: 0, loop: true }),
-  pounce: Object.freeze({ state: 'play-pounce', elapsedMs: 0, loop: true }),
-})
-
 const phaseLight = phase => ({
   morning: { window: 0, lamp: 0, night: 0 },
   day: { window: 0, lamp: 0, night: 0 },
@@ -65,6 +55,7 @@ const renderStateOf = object => object ? {
   visible: Boolean(object.visible),
   alpha: Number(object.alpha ?? 1),
   flipX: Boolean(object.flipX),
+  angle: Number(object.angle ?? 0),
   bounds: boundsOf(object),
 } : null
 
@@ -207,6 +198,7 @@ export class RoomWorld {
     const allowedTextureKeys = new Set([
       ...Object.values(DIRECT_ART_FILES).map(file => file.key),
       ...Object.values(DIRECT_DERIVED_TEXTURES).map(texture => texture.key),
+      CAT_MOTION_ART_FILE.key,
     ])
     const bridge = Object.freeze({
       version: 1,
@@ -216,6 +208,9 @@ export class RoomWorld {
         return this.scene.textures.get(key).getSourceImage()
       },
       setPose: (poseName, facing = 'right') => this.setQaPose(poseName, facing),
+      setMotion: (state, elapsedMs = 0, facing = 'right', loop = false) => (
+        this.setQaMotion(state, elapsedMs, facing, loop)
+      ),
       freezeFrame: () => this.freezeQaFrame(),
       resumeFrame: () => this.resumeQaFrame(),
     })
@@ -250,16 +245,29 @@ export class RoomWorld {
   }
 
   setQaPose(poseName, facing = 'right') {
-    const command = QA_POSE_COMMANDS[poseName]
-    if (!command || !DIRECT_CAT_POSES[poseName]) throw new RangeError(`Unknown QA cat pose: ${poseName}`)
+    if (!DIRECT_CAT_POSES[poseName]) throw new RangeError(`Unknown QA cat pose: ${poseName}`)
     this.behavior?.stop({ resetPose: false })
     this.setToyCaught(false)
-    this.scene?.tweens?.killTweensOf?.(this.cat.pixelSprite)
-    this.cat.pixelSprite.setY(0)
+    this.scene?.tweens?.killTweensOf?.(this.cat.reactionRoot)
+    this.cat.reactionRoot.setY(0)
+    this.cat
+      .setWorldPosition(ROOM_ANCHORS['center-idle'].x, ROOM_ANCHORS['center-idle'].y)
+      .setDirectPose(poseName, facing)
+    this.catContactShadow.setPosition(this.cat.x, this.cat.y + 10)
+    this.syncCaughtToy()
+    return this.getQaRenderInspection()
+  }
+
+  setQaMotion(state, elapsedMs = 0, facing = 'right', loop = false) {
+    if (!CAT_ANIMATION_SPECS[state]) throw new RangeError(`Unknown QA cat motion: ${state}`)
+    this.behavior?.stop({ resetPose: false })
+    this.setToyCaught(false)
+    this.scene?.tweens?.killTweensOf?.(this.cat.reactionRoot)
+    this.cat.reactionRoot.setY(0)
     this.cat
       .setWorldPosition(ROOM_ANCHORS['center-idle'].x, ROOM_ANCHORS['center-idle'].y)
       .setFacing(facing)
-      .setMotionState(command.state, command)
+      .setMotionState(state, { elapsedMs, loop })
     this.catContactShadow.setPosition(this.cat.x, this.cat.y + 10)
     this.syncCaughtToy()
     return this.getQaRenderInspection()
@@ -294,8 +302,13 @@ export class RoomWorld {
       cat: {
         pose: this.cat.poseName,
         facing: this.cat.facing,
+        motion: this.cat.getMotionState(),
         container: renderStateOf(this.cat),
+        reactionRoot: renderStateOf(this.cat.reactionRoot),
+        motionRoot: renderStateOf(this.cat.motionRoot),
         sprite: renderStateOf(this.cat.pixelSprite),
+        tailBody: renderStateOf(this.cat.tailBodySprite),
+        tailPart: renderStateOf(this.cat.tailPartSprite),
       },
       room: renderStateOf(this.backdrop),
       toy: renderStateOf(this.toy),
@@ -410,8 +423,8 @@ export class RoomWorld {
           width: Number(this.backdrop.displayWidth),
           height: Number(this.backdrop.displayHeight),
         },
-        catTexture: this.cat.pixelSprite?.texture?.key ?? null,
-        catFrame: this.cat.pixelSprite?.frame?.name ?? null,
+        catTexture: this.cat.getMotionState().textureKey,
+        catFrame: this.cat.getMotionState().frameId,
         catPose: this.cat.getMotionState().pose,
         bedForeground: this.bedForeground?.texture?.key ?? null,
       },

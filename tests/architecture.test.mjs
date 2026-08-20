@@ -152,7 +152,7 @@ test('Phaser is explicitly configured for capped-HiDPI direct-image WebGL', asyn
   const hiDpi = await readText(resolve(ROOT, 'src/game/render/HiDpiScale.js'))
   const debugScene = await readText(resolve(ROOT, 'src/game/scenes/DebugScene.js'))
   assert.match(source, /\btype\s*:\s*Phaser\.WEBGL\b/, 'Phaser config must use `type: Phaser.WEBGL`')
-  assert.doesNotMatch(source, /\btype\s*:\s*Phaser\.(?:AUTO|CANVAS|HEADLESS)\b/, 'AUTO/CANVAS/HEADLESS renderer fallback is not accepted for v0.8.1')
+  assert.doesNotMatch(source, /\btype\s*:\s*Phaser\.(?:AUTO|CANVAS|HEADLESS)\b/, 'AUTO/CANVAS/HEADLESS renderer fallback is not accepted for v0.8.2')
   assert.match(entry, /getContext\(['"]webgl['"]\)/, 'preflight must probe the WebGL1 context Phaser 4.2.1 requests')
   assert.doesNotMatch(entry, /getContext\(['"]webgl2['"]\)/, 'a WebGL2-only preflight can disagree with the Phaser renderer')
   assert.match(entry, /WEBGL_lose_context/, 'the preflight context must be released before Phaser allocates its renderer')
@@ -224,6 +224,32 @@ test('runtime preloads the approved direct-art manifest without procedural fallb
   assert.equal(await exists(resolve(ROOT, 'src/game/art/PlaceholderArt.js')), false, 'Remove v0.7 PlaceholderArt.js')
 })
 
+test('source-locked motion is a separate pinned supplement and never replaces the approved cat sheet', async () => {
+  const manifestPath = resolve(ROOT, 'src/game/art/CatMotionManifest.js')
+  const loaderPath = resolve(ROOT, 'src/game/art/CatMotion.js')
+  const kinematicsPath = resolve(ROOT, 'src/game/motion/CatKinematics.js')
+  const catPath = resolve(ROOT, 'src/game/entities/Cat.js')
+  const bootPath = resolve(ROOT, 'src/game/scenes/BootScene.js')
+  for (const path of [manifestPath, loaderPath, kinematicsPath, catPath]) {
+    assert.equal(await exists(path), true, `Missing ${repoPath(path)}`)
+  }
+  const [manifest, loader, kinematics, cat, boot] = await Promise.all(
+    [manifestPath, loaderPath, kinematicsPath, catPath, bootPath].map(readText),
+  )
+  assert.match(manifest, /motion\/v0\.8\.2\/cat-micro\.png/)
+  assert.match(manifest, /approved-source-locked-supplement/)
+  assert.match(loader, /preloadCatMotionArt/)
+  assert.match(loader, /prepareCatMotionArt/)
+  assert.match(boot, /preloadCatMotionArt\(this\)/)
+  assert.match(boot, /prepareCatMotionArt\(this\)/)
+  assert.match(cat, /CAT_BLINK_SEQUENCE/)
+  assert.match(cat, /CAT_TAIL_MOTION/)
+  assert.match(cat, /setDirectPose/)
+  assert.doesNotMatch(kinematics, /scaleX\s*:|scaleY\s*:|setScale\s*\(/, 'motion profiles must not scale approved source art')
+  assert.doesNotMatch(cat, /setScale\s*\([^,\n]+,/, 'cat motion must not apply non-uniform scale')
+  assert.doesNotMatch(`${kinematics}\n${cat}`, /crossFade|setAlpha\s*\(/i, 'motion must not cross-fade between source poses')
+})
+
 test('the six direct-art render layers are explicit Phaser display-list layers', async () => {
   const roomScenePath = resolve(ROOT, 'src/game/scenes/RoomScene.js')
   const roomWorldPath = resolve(ROOT, 'src/game/world/RoomWorld.js')
@@ -253,8 +279,8 @@ test('the visual-readback bridge and preserved framebuffer are strictly QA-query
   assert.match(roomWorld, /document\.documentElement\.dataset\.qa\s*!==\s*['"]true['"]/, 'QA bridge must reject normal documents')
   assert.match(
     roomWorld,
-    /Object\.freeze\(\{[\s\S]*?inspect:[\s\S]*?getTextureSource:[\s\S]*?setPose:[\s\S]*?freezeFrame:[\s\S]*?resumeFrame:/,
-    'QA bridge must expose only the guarded visual inspection, pose, and atomic frame-capture controls',
+    /Object\.freeze\(\{[\s\S]*?inspect:[\s\S]*?getTextureSource:[\s\S]*?setPose:[\s\S]*?setMotion:[\s\S]*?freezeFrame:[\s\S]*?resumeFrame:/,
+    'QA bridge must expose only the guarded visual inspection, pose, motion-seek, and atomic frame-capture controls',
   )
   assert.match(roomWorld, /systems\?\.pause\?\./, 'QA frame capture must pause Scene Systems before PNG encoding')
   assert.match(roomWorld, /systems\?\.resume\?\./, 'QA frame capture must resume Scene Systems after PNG encoding')
@@ -269,17 +295,17 @@ test('the visual-readback bridge and preserved framebuffer are strictly QA-query
   assert.match(entry, /requestedScene\s*=\s*qaApproved\s*&&/, 'scene bypass must not be available to normal URLs')
 })
 
-test('WebGL smoke evidence is isolated to a freshly cleared v0.8.1 artifact directory', async () => {
+test('WebGL smoke evidence is isolated to a freshly cleared v0.8.2 artifact directory', async () => {
   const smoke = await readText(resolve(ROOT, 'scripts/browser-smoke.mjs'))
   const workflow = await readText(resolve(ROOT, '.github/workflows/quality.yml'))
 
-  assert.match(smoke, /ARTIFACT_DIR\s*=\s*resolve\(ROOT,\s*['"]artifacts\/v0\.8\.1['"]\)/)
+  assert.match(smoke, /ARTIFACT_DIR\s*=\s*resolve\(ROOT,\s*['"]artifacts\/v0\.8\.2['"]\)/)
   assert.match(smoke, /await\s+rm\(ARTIFACT_DIR,\s*\{\s*recursive:\s*true,\s*force:\s*true\s*\}\)/, 'smoke must clear prior evidence before creating screenshots')
   assert.match(smoke, /withFrozenQaFrame\([\s\S]*?play-pounce[\s\S]*?room-toy-pounce\.png/, 'pounce evidence must be captured from an atomic frozen frame')
   assert.match(smoke, /pounceScreenshot\.sha256[\s\S]*?catchScreenshot\.sha256/, 'pounce and catch PNG evidence must be proven distinct')
-  assert.match(workflow, /name:\s*tail-room-v0\.8\.1-webgl-smoke/)
-  assert.match(workflow, /path:\s*artifacts\/v0\.8\.1/)
-  assert.doesNotMatch(`${smoke}\n${workflow}`, /artifacts\/v0\.8(?:\/|['"])/, 'v0.8 evidence path can mix stale PNGs into v0.8.1')
+  assert.match(workflow, /name:\s*tail-room-v0\.8\.2-webgl-smoke/)
+  assert.match(workflow, /path:\s*artifacts\/v0\.8\.2/)
+  assert.doesNotMatch(`${smoke}\n${workflow}`, /artifacts\/v0\.8(?:\/|['"])/, 'v0.8 evidence path can mix stale PNGs into v0.8.2')
 })
 
 test('first meeting preserves the approved daytime source colors', async () => {
@@ -384,10 +410,10 @@ test('the pinned Phaser 4 vendor artifact has a verified SHA-256 manifest', asyn
   )
 })
 
-test('runtime and package identify the v0.8.1 direct-art milestone', async () => {
+test('runtime and package identify the v0.8.2 source-locked motion milestone', async () => {
   const packagePath = resolve(ROOT, 'package.json')
   const pkg = JSON.parse(await readText(packagePath))
-  assert.equal(pkg.version, '0.8.1', 'package.json must identify the direct-art milestone')
+  assert.equal(pkg.version, '0.8.2', 'package.json must identify the source-locked motion milestone')
 
   const files = [
     packagePath,

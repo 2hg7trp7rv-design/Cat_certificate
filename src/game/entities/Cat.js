@@ -1,10 +1,17 @@
 import Phaser from '../phaser.js'
 import {
+  CAT_BLINK_SEQUENCE,
+  CAT_MOTION_ART_FILE,
+  CAT_MOTION_FRAMES,
+  CAT_TAIL_MOTION,
+} from '../art/CatMotionManifest.js'
+import {
   DIRECT_ART_FILES,
   DIRECT_CAT_POSES,
   resolveDirectCatPose,
 } from '../art/DirectArtManifest.js'
 import { alignCenteredHitArea } from '../input/HitArea.js'
+import { resolveCatKinematicTransform } from '../motion/CatKinematics.js'
 
 const animation = (frames, durations, { loop = false } = {}) => Object.freeze({
   frames,
@@ -72,12 +79,26 @@ export class Cat extends Phaser.GameObjects.Container {
     this.night = false
     this.facing = 'right'
     this.poseName = 'seated'
+    this.frameId = 'seated'
+    this.textureKey = DIRECT_ART_FILES.cat.key
+    this.visualMode = 'direct'
+    this.currentFrameSpec = DIRECT_CAT_POSES.seated
+    this.tailAngle = 0
+
+    this.reactionRoot = new Phaser.GameObjects.Container(scene, 0, 0)
+    this.motionRoot = new Phaser.GameObjects.Container(scene, 0, 0)
+    this.reactionRoot.add(this.motionRoot)
+    this.add(this.reactionRoot)
 
     const createSprite = typeof scene.add.sprite === 'function'
       ? scene.add.sprite.bind(scene.add)
       : scene.add.image.bind(scene.add)
     this.pixelSprite = createSprite(0, 0, DIRECT_ART_FILES.cat.key, DIRECT_CAT_POSES.seated.frame)
-    this.add(this.pixelSprite)
+    this.tailPartSprite = createSprite(0, 0, CAT_MOTION_ART_FILE.key, CAT_TAIL_MOTION.partFrame)
+      .setVisible(false)
+    this.tailBodySprite = createSprite(0, 0, CAT_MOTION_ART_FILE.key, CAT_TAIL_MOTION.bodyFrame)
+      .setVisible(false)
+    this.motionRoot.add([this.tailPartSprite, this.tailBodySprite, this.pixelSprite])
     scene.add.existing(this)
     this.#showDirectPose('seated')
     this.setScale(scale)
@@ -123,7 +144,7 @@ export class Cat extends Phaser.GameObjects.Container {
 
   setFacing(direction = 'right') {
     this.facing = direction === 'left' ? 'left' : 'right'
-    this.#applyPoseTransform(DIRECT_CAT_POSES[this.poseName] ?? DIRECT_CAT_POSES.seated)
+    this.#applyCurrentVisualTransform()
     return this
   }
 
@@ -143,21 +164,44 @@ export class Cat extends Phaser.GameObjects.Container {
     this.motionState = motionState
     this.motionFrame = frame
     this.#showPixelFrame(motionState, frame)
+    const kinematic = resolveCatKinematicTransform(motionState, frame)
+    this.motionRoot.setPosition(0, kinematic.y).setAngle(kinematic.angle)
     this.#applyTint()
     return this
   }
 
   getMotionState() {
-    return { state: this.motionState, frame: this.motionFrame, facing: this.facing, pose: this.poseName }
+    return {
+      state: this.motionState,
+      frame: this.motionFrame,
+      frameId: this.frameId,
+      textureKey: this.textureKey,
+      facing: this.facing,
+      pose: this.poseName,
+      visualMode: this.visualMode,
+      transform: Object.freeze({ y: this.motionRoot.y, angle: this.motionRoot.angle }),
+      tailAngle: this.visualMode === 'tail' ? this.tailAngle : 0,
+    }
+  }
+
+  setDirectPose(poseName = 'seated', facing = this.facing) {
+    if (!DIRECT_CAT_POSES[poseName]) throw new RangeError(`Unknown direct cat pose: ${poseName}`)
+    this.facing = facing === 'left' ? 'left' : 'right'
+    this.motionState = 'direct-pose'
+    this.motionFrame = 0
+    this.motionRoot.setPosition(0, 0).setAngle(0)
+    this.#showDirectPose(poseName)
+    this.#applyTint()
+    return this
   }
 
   acknowledgePetting(welcome = true) {
     if (welcome) this.setMotionState('welcome')
 
-    this.scene.tweens.killTweensOf(this.pixelSprite)
-    this.pixelSprite.setY(0)
+    this.scene.tweens.killTweensOf(this.reactionRoot)
+    this.reactionRoot.setY(0)
     this.scene.tweens.add({
-      targets: this.pixelSprite,
+      targets: this.reactionRoot,
       y: welcome ? -8 : 3,
       duration: 130,
       yoyo: true,
@@ -167,26 +211,111 @@ export class Cat extends Phaser.GameObjects.Container {
   }
 
   #showPixelFrame(state, frame) {
+    if (state === 'blink') {
+      const frameId = CAT_BLINK_SEQUENCE[Math.min(frame, CAT_BLINK_SEQUENCE.length - 1)]
+      return this.#showMotionFrame(frameId)
+    }
+    if (state === 'tail') {
+      const angle = CAT_TAIL_MOTION.angles[Math.min(frame, CAT_TAIL_MOTION.angles.length - 1)] ?? 0
+      return this.#showTailComposite(angle, frame)
+    }
     return this.#showDirectPose(resolveDirectCatPose(state, frame))
+  }
+
+  #showMotionFrame(frameId) {
+    const frame = CAT_MOTION_FRAMES[frameId]
+    if (!frame || !this.scene.textures?.exists?.(CAT_MOTION_ART_FILE.key)) return false
+    this.visualMode = 'motion-frame'
+    this.poseName = frame.canonicalPose
+    this.frameId = frameId
+    this.textureKey = CAT_MOTION_ART_FILE.key
+    this.currentFrameSpec = frame
+    this.tailAngle = 0
+    this.pixelSprite
+      .setVisible(true)
+      .setTexture(CAT_MOTION_ART_FILE.key, frame.frame)
+    this.tailBodySprite.setVisible(false)
+    this.tailPartSprite.setVisible(false)
+    this.#applyCurrentVisualTransform()
+    return true
+  }
+
+  #showTailComposite(angle, frame) {
+    if (!this.scene.textures?.exists?.(CAT_MOTION_ART_FILE.key)) return false
+    this.visualMode = 'tail'
+    this.poseName = 'seated'
+    this.frameId = `tail-composite-${Math.max(0, Math.floor(Number(frame) || 0))}`
+    this.textureKey = CAT_MOTION_ART_FILE.key
+    this.currentFrameSpec = CAT_MOTION_FRAMES[CAT_TAIL_MOTION.bodyFrame]
+    this.tailAngle = Number(angle) || 0
+    this.pixelSprite.setVisible(false)
+    this.tailPartSprite
+      .setVisible(true)
+      .setTexture(CAT_MOTION_ART_FILE.key, CAT_TAIL_MOTION.partFrame)
+    this.tailBodySprite
+      .setVisible(true)
+      .setTexture(CAT_MOTION_ART_FILE.key, CAT_TAIL_MOTION.bodyFrame)
+    this.#applyCurrentVisualTransform()
+    return true
   }
 
   #showDirectPose(poseName) {
     const pose = DIRECT_CAT_POSES[poseName] ?? DIRECT_CAT_POSES.seated
     if (!this.scene.textures?.exists?.(DIRECT_ART_FILES.cat.key)) return false
+    this.visualMode = 'direct'
     this.poseName = DIRECT_CAT_POSES[poseName] ? poseName : 'seated'
+    this.frameId = pose.frame
+    this.textureKey = DIRECT_ART_FILES.cat.key
+    this.currentFrameSpec = pose
+    this.tailAngle = 0
     this.pixelSprite
+      .setVisible(true)
       .setTexture(DIRECT_ART_FILES.cat.key, pose.frame)
-    this.#applyPoseTransform(pose)
+    this.tailBodySprite.setVisible(false)
+    this.tailPartSprite.setVisible(false)
+    this.#applyCurrentVisualTransform()
     return true
   }
 
-  #applyPoseTransform(pose) {
+  #applyCurrentVisualTransform() {
+    if (this.visualMode === 'tail') {
+      this.#applyTailTransform()
+      return
+    }
+    this.#applySpriteTransform(this.currentFrameSpec ?? DIRECT_CAT_POSES.seated)
+  }
+
+  #applySpriteTransform(frame) {
     const flip = this.facing === 'right'
-    const sourceOriginX = pose.pivot.x / pose.rect.width
+    const sourceOriginX = frame.pivot.x / frame.rect.width
     this.pixelSprite
-      .setOrigin(flip ? 1 - sourceOriginX : sourceOriginX, pose.pivot.y / pose.rect.height)
+      .setPosition(0, 0)
+      .setAngle(0)
+      .setOrigin(flip ? 1 - sourceOriginX : sourceOriginX, frame.pivot.y / frame.rect.height)
       .setFlipX(flip)
-    this.#updateHitArea(pose)
+    this.#updateHitArea(DIRECT_CAT_POSES[this.poseName] ?? DIRECT_CAT_POSES.seated)
+  }
+
+  #applyTailTransform() {
+    const flip = this.facing === 'right'
+    const body = CAT_MOTION_FRAMES[CAT_TAIL_MOTION.bodyFrame]
+    const part = CAT_MOTION_FRAMES[CAT_TAIL_MOTION.partFrame]
+    const bodyOriginX = body.pivot.x / body.rect.width
+    const partOriginX = CAT_TAIL_MOTION.partPivot.x / part.rect.width
+    const offsetX = CAT_TAIL_MOTION.partPivot.x - body.pivot.x
+    const offsetY = CAT_TAIL_MOTION.partPivot.y - body.pivot.y
+
+    this.tailBodySprite
+      .setPosition(0, 0)
+      .setAngle(0)
+      .setOrigin(flip ? 1 - bodyOriginX : bodyOriginX, body.pivot.y / body.rect.height)
+      .setFlipX(flip)
+    this.tailPartSprite
+      .setPosition(flip ? -offsetX : offsetX, offsetY)
+      .setOrigin(flip ? 1 - partOriginX : partOriginX, CAT_TAIL_MOTION.partPivot.y / part.rect.height)
+      .setFlipX(flip)
+      .setAngle(flip ? -this.tailAngle : this.tailAngle)
+    this.#updateHitArea(DIRECT_CAT_POSES.seated)
   }
 
   #updateHitArea(pose) {
@@ -206,6 +335,8 @@ export class Cat extends Phaser.GameObjects.Container {
   #applyTint() {
     const generalTint = this.night ? 0xffeed9 : 0xffffff
     this.pixelSprite.setTint(generalTint)
+    this.tailBodySprite.setTint(generalTint)
+    this.tailPartSprite.setTint(generalTint)
   }
 }
 

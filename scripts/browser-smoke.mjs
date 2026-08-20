@@ -11,9 +11,15 @@ import {
   DIRECT_CAT_STATE_MAP,
   DIRECT_DERIVED_TEXTURES,
 } from '../src/game/art/DirectArtManifest.js'
+import {
+  CAT_MOTION_ART_FILE,
+  CAT_MOTION_FRAMES,
+  CAT_MOTION_MANIFEST,
+  CAT_TAIL_MOTION,
+} from '../src/game/art/CatMotionManifest.js'
 
 const ROOT = resolve(process.cwd())
-const ARTIFACT_DIR = resolve(ROOT, 'artifacts/v0.8.1')
+const ARTIFACT_DIR = resolve(ROOT, 'artifacts/v0.8.2')
 const APP_PORT = Number(process.env.SMOKE_APP_PORT || 4173)
 const DRIVER_PORT = Number(process.env.SMOKE_DRIVER_PORT || 9515)
 const APP_ORIGIN = `http://127.0.0.1:${APP_PORT}`
@@ -39,7 +45,7 @@ let driver = null
 
 const report = {
   schema: 1,
-  milestone: 'v0.8.1-direct-art',
+  milestone: 'v0.8.2-source-locked-motion',
   createdAt: new Date().toISOString(),
   environment: {
     runner: process.env.RUNNER_ENVIRONMENT || null,
@@ -65,6 +71,7 @@ const report = {
   interaction: null,
   responsiveInteractions: [],
   poseParity: [],
+  motionArt: null,
   derivedTextures: null,
   dprStatic: [],
   dprInputs: [],
@@ -1318,6 +1325,16 @@ function assertDirectArtSnapshot(snapshot, label) {
   assert.deepEqual(directArt.room, DIRECT_ART_MANIFEST.room, `${label}: approved room geometry changed`)
 }
 
+function assertMotionArtSnapshot(snapshot, label) {
+  const motionArt = snapshot?.qa?.motionArt
+  assert.ok(motionArt, `${label}: motion-art diagnostics are unavailable`)
+  assert.equal(motionArt.source, CAT_MOTION_MANIFEST.source, `${label}: motion source identity changed`)
+  assert.equal(motionArt.version, CAT_MOTION_MANIFEST.version, `${label}: motion manifest version changed`)
+  assert.equal(motionArt.files, 1, `${label}: supplemental motion file count changed`)
+  assert.equal(motionArt.frames, Object.keys(CAT_MOTION_FRAMES).length, `${label}: motion frames are incomplete`)
+  assert.equal(motionArt.neutralTailDifference, 0, `${label}: neutral tail composite is not source exact`)
+}
+
 function assertBrandVisualParity(probe, label) {
   assert.equal(probe?.ok, true, `${label}: first-meeting emblem probe failed: ${probe?.error || 'unknown error'}`)
   assert.equal(probe.sha256, DIRECT_ART_FILES.brand.sha256, `${label}: first-meeting emblem bytes changed`)
@@ -1641,7 +1658,7 @@ function assertCenteredCover(snapshot, size) {
 
 function assertRoomSnapshot(snapshot, size) {
   const [expectedWidth, expectedHeight] = size.split('x').map(Number)
-  assert.equal(snapshot.version, '0.8.1', `${size}: unexpected application version`)
+  assert.equal(snapshot.version, '0.8.2', `${size}: unexpected application version`)
   assert.equal(snapshot.ready, true, `${size}: runtime did not reach ready state`)
   assert.equal(snapshot.qa.renderer, 'webgl', `${size}: Phaser did not select WebGL`)
   assert.equal(snapshot.qa.scene, 'RoomScene', `${size}: RoomScene is not active`)
@@ -1682,7 +1699,7 @@ function assertRoomSnapshot(snapshot, size) {
   assert.equal(snapshot.webgl.contextLost, false, `${size}: WebGL context is lost`)
   assert.equal(snapshot.webgl.preserveDrawingBuffer, true, `${size}: QA-only framebuffer preservation is unavailable`)
   assert.equal(snapshot.qa.contextLost, false, `${size}: the runtime reported a lost WebGL context`)
-  assert.deepEqual(snapshot.layers, REQUIRED_LAYERS, `${size}: Phaser layer order differs from the v0.8.1 contract`)
+  assert.deepEqual(snapshot.layers, REQUIRED_LAYERS, `${size}: Phaser layer order differs from the v0.8.2 contract`)
   assert.ok(Math.abs(snapshot.appRect.width - expectedWidth) < 0.5, `${size}: app width is ${snapshot.appRect.width}`)
   assert.ok(Math.abs(snapshot.appRect.height - expectedHeight) < 0.5, `${size}: app height is ${snapshot.appRect.height}`)
   assert.ok(Math.abs(snapshot.canvasRect.width - expectedWidth) < 0.5, `${size}: canvas width is ${snapshot.canvasRect.width}`)
@@ -1707,6 +1724,7 @@ function assertRoomSnapshot(snapshot, size) {
   assert.equal(snapshot.bootError, null, `${size}: BootScene reported an error`)
   assert.equal(snapshot.qaBridgePresent, true, `${size}: guarded QA inspection bridge is unavailable`)
   assertDirectArtSnapshot(snapshot, size)
+  assertMotionArtSnapshot(snapshot, size)
   assert.equal(snapshot.qa.pixelTextures, undefined, `${size}: legacy procedural texture diagnostics are still present`)
   assert.equal(snapshot.qa.pixelWorld, undefined, `${size}: legacy low-resolution world diagnostics are still present`)
   assert.ok(snapshot.qa.room?.behavior, `${size}: cat behavior diagnostics are unavailable`)
@@ -1940,6 +1958,87 @@ async function runPoseAndDerivedParityCase() {
   }
 }
 
+async function seekQaMotion({ state, elapsedMs, facing = 'right', loop = false }) {
+  return driver.executeAsync(`
+    const options = arguments[0];
+    const done = arguments[arguments.length - 1];
+    try {
+      const bridge = window.__TAIL_ROOM_QA_BRIDGE__;
+      if (!bridge || typeof bridge.setMotion !== 'function') {
+        throw new Error('Guarded QA motion bridge is unavailable');
+      }
+      bridge.setMotion(options.state, options.elapsedMs, options.facing, options.loop);
+      requestAnimationFrame(() => requestAnimationFrame(() => done({ ok: true, inspection: bridge.inspect() })));
+    } catch (error) {
+      done({ ok: false, error: error.stack || String(error) });
+    }
+  `, [{ state, elapsedMs, facing, loop }])
+}
+
+async function runMotionArtCase() {
+  const size = '393x852'
+  const result = { size, status: 'running', captures: [] }
+  report.motionArt = result
+  await driver.emulateViewport(size)
+  await driver.navigate(`${APP_ORIGIN}/?qa=${size}&scene=room`)
+  await waitForScene('RoomScene')
+
+  const cases = [
+    { name: 'blink-half', state: 'blink', elapsedMs: 0, expectedFrame: 'blink-half', mode: 'motion-frame' },
+    { name: 'blink-closed', state: 'blink', elapsedMs: 90, expectedFrame: 'blink-closed', mode: 'motion-frame' },
+    { name: 'tail-sweep-a', state: 'tail', elapsedMs: 300, expectedFrame: 'tail-composite-2', mode: 'tail', tailAngle: CAT_TAIL_MOTION.angles[2] },
+    { name: 'tail-sweep-b', state: 'tail', elapsedMs: 420, expectedFrame: 'tail-composite-3', mode: 'tail', tailAngle: CAT_TAIL_MOTION.angles[3] },
+    { name: 'play-pounce-apex', state: 'play-pounce', elapsedMs: 270, expectedFrame: 'pounce', mode: 'direct', rootY: -24, rootAngle: 1 },
+  ]
+
+  try {
+    for (const entry of cases) {
+      const seek = await seekQaMotion(entry)
+      assert.equal(seek?.ok, true, `${entry.name}: motion seek failed: ${seek?.error || 'unknown error'}`)
+      const cat = seek.inspection?.cat
+      assert.ok(cat?.motion, `${entry.name}: motion inspection is missing`)
+      assert.equal(cat.motion.state, entry.state, `${entry.name}: logical motion state changed`)
+      assert.equal(cat.motion.frameId, entry.expectedFrame, `${entry.name}: rendered frame changed`)
+      assert.equal(cat.motion.visualMode, entry.mode, `${entry.name}: visual mode changed`)
+      assert.equal(cat.motion.pose, entry.state === 'play-pounce' ? 'pounce' : 'seated')
+      assert.equal(cat.motion.textureKey, entry.mode === 'direct' ? DIRECT_ART_FILES.cat.key : CAT_MOTION_ART_FILE.key)
+      assert.equal(cat.motionRoot.scaleX, 1, `${entry.name}: source art was horizontally scaled`)
+      assert.equal(cat.motionRoot.scaleY, 1, `${entry.name}: source art was vertically scaled`)
+
+      if (entry.mode === 'tail') {
+        assert.equal(cat.sprite.visible, false, `${entry.name}: direct seated sprite remained visible behind tail composite`)
+        assert.equal(cat.tailBody.visible, true, `${entry.name}: tail body component is hidden`)
+        assert.equal(cat.tailPart.visible, true, `${entry.name}: tail part component is hidden`)
+        assert.equal(cat.motion.tailAngle, entry.tailAngle, `${entry.name}: authored tail angle changed`)
+        assert.equal(Math.abs(cat.tailPart.angle), Math.abs(entry.tailAngle), `${entry.name}: rendered tail angle changed`)
+      } else {
+        assert.equal(cat.sprite.visible, true, `${entry.name}: primary cat sprite is hidden`)
+        assert.equal(cat.tailBody.visible, false, `${entry.name}: tail body leaked into non-tail motion`)
+        assert.equal(cat.tailPart.visible, false, `${entry.name}: tail part leaked into non-tail motion`)
+      }
+
+      if (entry.rootY !== undefined) {
+        assert.equal(cat.motionRoot.y, entry.rootY, `${entry.name}: pounce height changed`)
+        assert.equal(cat.motionRoot.angle, entry.rootAngle, `${entry.name}: pounce angle changed`)
+      }
+
+      const screenshot = await driver.saveElementScreenshot('#app', `cat-motion-${entry.name}.png`)
+      assert.deepEqual({ width: screenshot.width, height: screenshot.height }, parseSize(size))
+      result.captures.push({ ...entry, inspection: cat, screenshot })
+    }
+
+    const byName = Object.fromEntries(result.captures.map(capture => [capture.name, capture]))
+    assert.notEqual(byName['blink-half'].screenshot.sha256, byName['blink-closed'].screenshot.sha256, 'blink phases rendered identical pixels')
+    assert.notEqual(byName['tail-sweep-a'].screenshot.sha256, byName['tail-sweep-b'].screenshot.sha256, 'tail phases rendered identical pixels')
+    assert.notEqual(byName['play-pounce-apex'].screenshot.sha256, byName['tail-sweep-a'].screenshot.sha256, 'pounce apex rendered as a seated tail phase')
+    result.status = 'passed'
+  } catch (error) {
+    result.status = 'failed'
+    result.error = error.stack || String(error)
+    throw error
+  }
+}
+
 const visibleScript = selector => `
   const element = document.querySelector(${JSON.stringify(selector)});
   if (!element || element.hidden) return false;
@@ -2011,6 +2110,7 @@ async function runInteractionCase() {
     assert.equal(firstMeetingRuntime.appMode, 'first-meeting', 'First meeting DOM mode is not active')
     assert.deepEqual(firstMeetingRuntime.layers, REQUIRED_LAYERS, 'First meeting does not use the six-layer world')
     assertDirectArtSnapshot(firstMeetingRuntime, '393x852 first meeting')
+    assertMotionArtSnapshot(firstMeetingRuntime, '393x852 first meeting')
     assert.equal(firstMeetingRuntime.qa.room?.art?.roomTexture, DIRECT_ART_FILES.room.key, 'First meeting room is not the approved PNG')
     assert.equal(firstMeetingRuntime.qa.room?.art?.catTexture, DIRECT_ART_FILES.cat.key, 'First meeting cat is not the approved source sheet')
     assert.ok(DIRECT_POSE_NAMES.has(firstMeetingRuntime.qa.room?.art?.catPose), 'First meeting cat pose is not approved')
@@ -2799,6 +2899,11 @@ async function main() {
   }
   try {
     await runPoseAndDerivedParityCase()
+  } catch (error) {
+    failures.push(error)
+  }
+  try {
+    await runMotionArtCase()
   } catch (error) {
     failures.push(error)
   }

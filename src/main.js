@@ -4,7 +4,7 @@ import { getInitialHiDpiMetrics, installHiDpiScaleSync } from './game/render/HiD
 import GameStateStore from './state/GameStateStore.js'
 import UIController from './ui/UIController.js'
 
-const APP_VERSION = '0.8.1'
+const APP_VERSION = '0.8.2'
 const PHASER_VERSION = '4.2.1'
 const QA_SIZES = new Set(['320x667', '393x852', '430x932'])
 
@@ -73,6 +73,11 @@ window.__TAIL_ROOM_QA__ = {
     room: { width: 852, height: 1846 },
     files: 0,
     poses: 0,
+  },
+  motionArt: {
+    source: 'approved-source-locked-supplement',
+    files: 0,
+    frames: 0,
   },
   fps: { current: 0, minimum: null, average: null },
 }

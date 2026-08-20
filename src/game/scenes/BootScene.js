@@ -1,4 +1,5 @@
 import Phaser from '../phaser.js'
+import { prepareCatMotionArt, preloadCatMotionArt } from '../art/CatMotion.js'
 import { prepareDirectArt, preloadDirectArt } from '../art/DirectArt.js'
 
 export class BootScene extends Phaser.Scene {
@@ -13,6 +14,7 @@ export class BootScene extends Phaser.Scene {
       this.directArtLoadError = `原画像を読み込めませんでした: ${file?.src ?? file?.key ?? 'unknown asset'}`
     })
     preloadDirectArt(this)
+    preloadCatMotionArt(this)
   }
 
   create() {
@@ -22,6 +24,7 @@ export class BootScene extends Phaser.Scene {
     try {
       if (this.directArtLoadError) throw new Error(this.directArtLoadError)
       const art = prepareDirectArt(this)
+      const motionArt = prepareCatMotionArt(this)
       window.__TAIL_ROOM_QA__.directArt = {
         source: art.manifest.source,
         version: art.manifest.version,
@@ -29,6 +32,13 @@ export class BootScene extends Phaser.Scene {
         poses: art.registeredPoses.length,
         derived: art.derivedKeys.length,
         room: { ...art.manifest.room },
+      }
+      window.__TAIL_ROOM_QA__.motionArt = {
+        source: motionArt.manifest.source,
+        version: motionArt.manifest.version,
+        files: 1,
+        frames: motionArt.registeredFrames.length,
+        neutralTailDifference: motionArt.manifest.provenance.tail.neutralCompositePixelDifference,
       }
       window.__TAIL_ROOM_QA__.renderer = this.game.renderer.type === Phaser.WEBGL ? 'webgl' : 'unexpected'
       window.__TAIL_ROOM_QA__.ready = true
